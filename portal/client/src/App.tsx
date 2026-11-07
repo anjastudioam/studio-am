@@ -4,7 +4,8 @@ import { useAuth } from "./auth";
 import { AdminShell, PortalShell } from "./components/Shell";
 import { Loading } from "./components/ui";
 import { AdminClientPage } from "./pages/AdminClient";
-import { AdminDashboard } from "./pages/AdminDashboard";
+import { ClientsPage } from "./pages/AdminDashboard";
+import { DashboardPage } from "./pages/Dashboard";
 import { CalendarPage } from "./pages/Calendar";
 import { FilesPage } from "./pages/Files";
 import { HomePage } from "./pages/Home";
@@ -50,7 +51,8 @@ export function App() {
             </Protected>
           }
         >
-          <Route index element={<AdminDashboard />} />
+          <Route index element={<DashboardPage />} />
+          <Route path="clients" element={<ClientsPage />} />
           <Route path="calendar" element={<MasterCalendarPage />} />
           <Route path="clients/:id" element={<AdminClientPage />} />
         </Route>

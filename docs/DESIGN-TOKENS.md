@@ -41,3 +41,20 @@ The logo is a high-contrast, thin-stroke, elegant geometric display style. To ma
 - Is `#AEA114` the final brand colour, or a placeholder?
 - Is there an existing font used with the logo?
 - Is a dark mode wanted? (Not planned for v1.)
+
+---
+
+## Update, 7 Nov 2026: interface now follows the reference dashboard
+
+The portal interface was rebuilt to match `Minimal new tab dashboard UI design - light mode.jpg` (frosted glass on a misty blue-white background). The olive brand colour is not used in the interface for now; the logo tile carries it. Revisit when the brand identity is final.
+
+| Token | Value | Use |
+|---|---|---|
+| `--ink` | `#16213d` | Text, primary buttons, active dock tile |
+| `--muted` | `#66728f` | Secondary text |
+| `--accent` | `#2c4a8f` | Links, focus rings, avatars |
+| `--glass` | `rgba(255,255,255,.58)` + `blur(18px)` | Cards, dock, panels |
+| `--glass-edge` | `rgba(255,255,255,.85)` | Card borders |
+| Radii | 24 / 16 / 10 px | Panels / cards / small controls |
+
+Layout: floating icon dock on the left (bottom pill bar on phones), widget dashboard at `/admin`, glass panel for every other page. Font stays Jost (clock at weight 300).

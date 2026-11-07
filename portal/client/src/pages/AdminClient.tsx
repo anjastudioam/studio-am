@@ -3,25 +3,9 @@ import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
 import { Btn, ErrorNote, Field, Loading, PageHead } from "../components/ui";
 import { fmtDateTime } from "../format";
+import { actionLabel } from "../activity";
 import { useAction, useLoad } from "../hooks";
 import type { AdminClient, AuditRow } from "../types";
-
-const ACTION_LABELS: Record<string, string> = {
-  "auth.login": "Signed in",
-  "client.create": "Client created",
-  "client.update": "Client settings changed",
-  "user.invite": "Person invited",
-  "user.activate": "Access turned on",
-  "user.deactivate": "Access turned off",
-  "post.approve": "Post approved by client",
-  "post.request_changes": "Client requested changes on a post",
-};
-const actionLabel = (a: string) => {
-  if (ACTION_LABELS[a]) return ACTION_LABELS[a];
-  const [section, verb] = a.split(".");
-  const v = verb === "create" ? "added to" : verb === "update" ? "changed in" : verb === "delete" ? "removed from" : verb;
-  return `Item ${v} ${section}`;
-};
 
 export function AdminClientPage() {
   const { id = "" } = useParams();
@@ -49,7 +33,7 @@ export function AdminClientPage() {
         title={client.name}
         lead={
           <>
-            <Link className="text-link" to="/admin">
+            <Link className="text-link" to="/admin/clients">
               All clients
             </Link>{" "}
             ·{" "}

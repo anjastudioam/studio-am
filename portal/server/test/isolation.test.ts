@@ -277,6 +277,12 @@ describe("admin", () => {
     expect(after.body.every((p: any) => p.clientSlug === "alpha-co")).toBe(true);
   });
 
+  it("lists every client's to-dos for the dashboard, admins only", async () => {
+    const res = await adminAgent.get("/api/admin/tasks").expect(200);
+    expect(res.body.map((t: any) => t.clientSlug).sort()).toEqual(["alpha-co", "bravo-co"]);
+    await aliceAgent.get("/api/admin/tasks").expect(403);
+  });
+
   it("writes an audit trail", async () => {
     await adminAgent.post("/api/c/alpha-co/notices").send({ title: "Hello" }).expect(201);
     const log = (await adminAgent.get("/api/admin/audit").expect(200)).body;

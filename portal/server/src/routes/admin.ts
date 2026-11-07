@@ -72,6 +72,29 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
     }),
   );
 
+  /** Every to-do for every non-archived client, for the dashboard. */
+  r.get(
+    "/tasks",
+    wrap(async (_req, res) => {
+      const rows = await db
+        .select({
+          id: tasks.id,
+          clientId: tasks.clientId,
+          clientName: clients.name,
+          clientSlug: clients.slug,
+          title: tasks.title,
+          dueDate: tasks.dueDate,
+          owner: tasks.owner,
+          done: tasks.done,
+        })
+        .from(tasks)
+        .innerJoin(clients, eq(clients.id, tasks.clientId))
+        .where(ne(clients.status, "ARCHIVED"))
+        .orderBy(tasks.done, tasks.dueDate, clients.name);
+      res.json(rows);
+    }),
+  );
+
   r.post(
     "/clients",
     wrap(async (req, res) => {

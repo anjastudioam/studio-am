@@ -35,7 +35,7 @@ export type Home = {
 
 export type AdminClient = { id: string; name: string; slug: string; status: "ACTIVE" | "PAUSED" | "ARCHIVED"; awaitingApproval: number; openTasks: number };
 export type AdminUser = { id: string; email: string; name: string; role: Role; active: boolean; lastLoginAt: string | null };
-export type AuditRow = { id: string; actorUserId: string | null; action: string; entity: string | null; createdAt: string };
+export type AuditRow = { id: string; actorUserId: string | null; clientId: string | null; action: string; entity: string | null; createdAt: string };
 
 export const LINK_TYPES: { value: string; label: string }[] = [
   { value: "SOCIAL_PROFILES", label: "Social profiles" },
@@ -67,3 +67,4 @@ export const linkLabel = (v: string) => LINK_TYPES.find((t) => t.value === v)?.l
 export const folderLabel = (v: string) => FOLDERS.find((t) => t.value === v)?.label ?? v;
 
 export type MasterPost = Post & { clientId: string; clientName: string; clientSlug: string };
+export type MasterTask = { id: string; clientId: string; clientName: string; clientSlug: string; title: string; dueDate: string | null; owner: "AGENCY" | "CLIENT"; done: boolean };

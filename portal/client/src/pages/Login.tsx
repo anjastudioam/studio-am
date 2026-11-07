@@ -25,15 +25,14 @@ export function LoginPage() {
 
   return (
     <div className="login">
-      <div className="login-art">
-        <img src="/logo.png" alt="Studio AM" width={300} height={300} />
-      </div>
+      <div className="mist" aria-hidden="true" />
       <div className="login-form">
         {sent ? (
           <div className="login-card" role="status">
+            <img className="login-logo" src="/logo.png" alt="Studio AM" width={72} height={72} />
             <h1>Check your email</h1>
             <p className="lead">
-              If <strong>{email}</strong> has a Studio AM portal, a sign-in link is on its way. It works once and expires in 15 minutes.
+              If <strong>{email}</strong> is registered, a sign-in link is on its way. It works once and expires in 15 minutes.
             </p>
             <Btn kind="quiet" onClick={() => setSent(false)}>
               Use a different email
@@ -41,10 +40,11 @@ export function LoginPage() {
           </div>
         ) : (
           <form className="login-card" onSubmit={submit}>
-            <h1>Sign in to your portal</h1>
-            <p className="lead">Enter your email and we'll send you a link. No password needed.</p>
+            <img className="login-logo" src="/logo.png" alt="Studio AM" width={72} height={72} />
+            <h1>Sign in to Studio AM</h1>
+            <p className="lead">Enter your email and we'll send you a sign-in link. No password needed.</p>
             <Field label="Email address">
-              <input type="email" required autoComplete="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourbusiness.co.za" />
+              <input type="email" required autoComplete="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studio-am.co.za" />
             </Field>
             <ErrorNote message={error} />
             <Btn type="submit" busy={busy}>
@@ -84,7 +84,7 @@ export function VerifyPage() {
 
   if (!error) return <Loading />;
   return (
-    <div className="center-note">
+    <div className="center-note glass">
       <h1>That link didn't work</h1>
       <p>{error}</p>
       <Btn onClick={() => nav("/login")}>Request a new link</Btn>

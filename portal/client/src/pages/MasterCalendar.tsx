@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Btn, Drawer, Empty, ErrorNote, Field, Loading, PageHead, StatusChip } from "../components/ui";
 import { NewPost, PostDetail, STATUSES } from "../components/PostForms";
 import { fmtShort, plural, todayIso } from "../format";
@@ -17,8 +17,9 @@ export function MasterCalendarPage() {
   const now = new Date();
   const [cursor, setCursor] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [view, setView] = useState<"month" | "list">("month");
-  const [clientFilter, setClientFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [clientFilter, setClientFilter] = useState(params.get("client") ?? "");
+  const [statusFilter, setStatusFilter] = useState(params.get("status") ?? "");
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newFor, setNewFor] = useState("");
@@ -26,6 +27,27 @@ export function MasterCalendarPage() {
   useEffect(() => {
     if (!wide) setView("list");
   }, [wide]);
+
+  // Deep links from the dashboard and search: ?post=<id> opens a post, ?new=1 starts a new one.
+  const wantedPost = params.get("post");
+  const wantNew = params.get("new") === "1";
+  useEffect(() => {
+    if (!posts.data) return;
+    if (wantedPost) {
+      const p = posts.data.find((x) => x.id === wantedPost);
+      if (p) {
+        setOpenId(p.id);
+        const [y, m] = p.publishDate.split("-").map(Number);
+        setCursor({ y, m: m - 1 });
+        setClientFilter("");
+        setStatusFilter("");
+      }
+      setParams({}, { replace: true });
+    } else if (wantNew && clients.data) {
+      setCreating(true);
+      setParams({}, { replace: true });
+    }
+  }, [wantedPost, wantNew, posts.data, clients.data, setParams]);
 
   const colourOf = useMemo(() => {
     const map = new Map<string, string>();

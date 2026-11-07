@@ -1,15 +1,16 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { Btn, Empty, ErrorNote, Field, Loading, PageHead } from "../components/ui";
 import { useAction, useLoad } from "../hooks";
 import { plural } from "../format";
 import type { AdminClient } from "../types";
 
-export function AdminDashboard() {
+export function ClientsPage() {
   const { data, error, loading } = useLoad<AdminClient[]>("/api/admin/clients");
   const [name, setName] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [params] = useSearchParams();
+  const [adding, setAdding] = useState(params.get("new") === "1");
   const add = useAction();
   const nav = useNavigate();
 

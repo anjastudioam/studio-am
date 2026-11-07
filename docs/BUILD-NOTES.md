@@ -49,3 +49,9 @@ One shared account. Added: master content calendar across all clients (colour-co
 1. Demo deployment on Render + Neon (dummy data only).
 2. Move to the VPS before real client information goes in.
 3. Vector (SVG) version of the logo.
+
+## Interface restyle (7 Nov 2026)
+- Rebuilt to the reference dashboard: dock navigation, clock, search (Ctrl/Cmd+K), widget cards (Up next, Clients, To-do, Quick add, Needs attention, Recent activity).
+- Added GET /api/admin/tasks (open to-dos across clients) for the dashboard.
+- Master calendar accepts ?post=, ?new=1, ?status=, ?client= so dashboard cards and search can deep-link.
+- Logo is a raster PNG and looks soft when enlarged; an SVG version is needed.
