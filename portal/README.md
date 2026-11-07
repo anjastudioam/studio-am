@@ -1,6 +1,6 @@
 # Studio AM Client Portal
 
-Private, branded workspace for each Studio AM client: link stack, file folders, to-do, notice board, content calendar with approvals, idea bank and moodboard. See `../docs/PRODUCT-SPEC.md` for the full spec.
+Internal tool for Studio AM (clients do not sign in). One shared account, a page per client, and one master calendar across all clients. Per client: link stack, file folders, to-do, notice board, content calendar with approvals, idea bank and moodboard. See `../docs/PRODUCT-SPEC.md` for the full spec.
 
 **Status:** backend and interface built and tested. Next: demo deployment (Render + Neon, dummy data only), then the VPS for real clients.
 

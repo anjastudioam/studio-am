@@ -265,6 +265,18 @@ describe("admin", () => {
     expect(alpha.openTasks).toBe(1);
   });
 
+  it("shows every client's posts in one master list, and only to admins", async () => {
+    const res = await adminAgent.get("/api/admin/posts").expect(200);
+    const slugs = new Set(res.body.map((p: any) => p.clientSlug));
+    expect(slugs.has("alpha-co") && slugs.has("bravo-co")).toBe(true);
+    expect(res.body.length).toBe(4); // 2 posts per client, drafts included
+    expect(JSON.stringify(res.body)).toContain("SECRET NOTE");
+    await aliceAgent.get("/api/admin/posts").expect(403);
+    await adminAgent.patch(`/api/admin/clients/${s.b.id}`).send({ status: "ARCHIVED" }).expect(200);
+    const after = await adminAgent.get("/api/admin/posts").expect(200);
+    expect(after.body.every((p: any) => p.clientSlug === "alpha-co")).toBe(true);
+  });
+
   it("writes an audit trail", async () => {
     await adminAgent.post("/api/c/alpha-co/notices").send({ title: "Hello" }).expect(201);
     const log = (await adminAgent.get("/api/admin/audit").expect(200)).body;

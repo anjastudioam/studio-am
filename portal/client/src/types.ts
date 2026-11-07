@@ -65,3 +65,5 @@ export const STATUS_LABEL: Record<PostStatus, string> = {
 };
 export const linkLabel = (v: string) => LINK_TYPES.find((t) => t.value === v)?.label ?? v;
 export const folderLabel = (v: string) => FOLDERS.find((t) => t.value === v)?.label ?? v;
+
+export type MasterPost = Post & { clientId: string; clientName: string; clientSlug: string };

@@ -11,6 +11,7 @@ import { HomePage } from "./pages/Home";
 import { IdeasPage } from "./pages/Ideas";
 import { LinksPage } from "./pages/Links";
 import { LoginPage, VerifyPage } from "./pages/Login";
+import { MasterCalendarPage } from "./pages/MasterCalendar";
 import { MoodboardPage } from "./pages/Moodboard";
 import { NoticesPage } from "./pages/Notices";
 import { TasksPage } from "./pages/Tasks";
@@ -50,6 +51,7 @@ export function App() {
           }
         >
           <Route index element={<AdminDashboard />} />
+          <Route path="calendar" element={<MasterCalendarPage />} />
           <Route path="clients/:id" element={<AdminClientPage />} />
         </Route>
         <Route

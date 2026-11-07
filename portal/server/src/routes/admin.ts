@@ -5,6 +5,7 @@ import { audit } from "../audit";
 import { AuthService, normaliseEmail } from "../auth/service";
 import type { Db } from "../db";
 import { auditLog, clients, posts, tasks, users } from "../db/schema";
+import { ne } from "drizzle-orm";
 import { HttpError, isUuid, wrap } from "../http";
 import { requireAdmin } from "../middleware/auth";
 
@@ -41,6 +42,33 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
       const aw = new Map(awaiting.map((a) => [a.clientId, a.n]));
       const op = new Map(open.map((a) => [a.clientId, a.n]));
       res.json(all.map((c) => ({ ...c, awaitingApproval: aw.get(c.id) ?? 0, openTasks: op.get(c.id) ?? 0 })));
+    }),
+  );
+
+  /** Master calendar: every post for every non-archived client, newest information first by date. */
+  r.get(
+    "/posts",
+    wrap(async (_req, res) => {
+      const rows = await db
+        .select({
+          id: posts.id,
+          clientId: posts.clientId,
+          clientName: clients.name,
+          clientSlug: clients.slug,
+          publishDate: posts.publishDate,
+          platform: posts.platform,
+          pillar: posts.pillar,
+          format: posts.format,
+          caption: posts.caption,
+          assetUrl: posts.assetUrl,
+          status: posts.status,
+          internalNote: posts.internalNote,
+        })
+        .from(posts)
+        .innerJoin(clients, eq(clients.id, posts.clientId))
+        .where(ne(clients.status, "ARCHIVED"))
+        .orderBy(posts.publishDate, clients.name);
+      res.json(rows);
     }),
   );
 

@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
+import type { AdminClient } from "../types";
 import { createContext, useContext } from "react";
 import { useAuth } from "../auth";
 import { useLoad } from "../hooks";
@@ -40,6 +41,25 @@ function SignOut() {
   );
 }
 
+function ClientSwitcher({ current }: { current: string }) {
+  const nav = useNavigate();
+  const { data } = useLoad<AdminClient[]>("/api/admin/clients");
+  if (!data) return null;
+  const active = data.filter((c) => c.status !== "ARCHIVED");
+  return (
+    <label className="switcher">
+      <span className="sr-only">Switch client</span>
+      <select value={current} onChange={(e) => nav(`/c/${e.target.value}`)} aria-label="Switch client">
+        {active.map((c) => (
+          <option key={c.id} value={c.slug}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 export function PortalShell() {
   const { slug = "" } = useParams();
   const { user } = useAuth();
@@ -66,6 +86,12 @@ export function PortalShell() {
     { to: `${base}/ideas`, label: "Idea bank" },
     { to: `${base}/moodboard`, label: "Moodboard" },
     { to: `${base}/notices`, label: "Notice board" },
+    ...(isAdmin
+      ? [
+          { to: "/admin/calendar", label: "Master calendar", mobileOnly: true },
+          { to: "/admin", label: "All clients", mobileOnly: true },
+        ]
+      : []),
   ];
 
   return (
@@ -74,29 +100,35 @@ export function PortalShell() {
         <aside className="rail">
           <Brand />
           <div className="rail-client">
-            <span className="rail-kicker">{isAdmin ? "Client portal" : "Your portal"}</span>
+            <span className="rail-kicker">{isAdmin ? "Working on" : "Your portal"}</span>
             <strong>{data.client.name}</strong>
+            {isAdmin ? <ClientSwitcher current={slug} /> : null}
           </div>
           <nav className="rail-nav" aria-label="Sections">
             {items.map((i) => (
-              <NavLink key={i.to} to={i.to} end={i.end} className={({ isActive }) => (isActive ? "active" : "")}>
+              <NavLink
+                key={i.label}
+                to={i.to}
+                end={"end" in i ? i.end : false}
+                className={({ isActive }) => `${isActive ? "active" : ""} ${"mobileOnly" in i ? "mobile-only" : ""}`}
+              >
                 {i.label}
               </NavLink>
             ))}
           </nav>
           {isAdmin ? (
-            <NavLink className="rail-link rail-back" to="/admin">
-              All clients
-            </NavLink>
+            <div className="rail-group">
+              <NavLink className="rail-link rail-back" to="/admin/calendar">
+                Master calendar
+              </NavLink>
+              <NavLink className="rail-link rail-back" to="/admin">
+                All clients
+              </NavLink>
+            </div>
           ) : null}
           <SignOut />
         </aside>
         <main className="main" id="main">
-          {isAdmin ? (
-            <p className="admin-banner">
-              You're viewing {data.client.name} as Studio AM. Clients see the same pages without the edit controls.
-            </p>
-          ) : null}
           <Outlet />
         </main>
       </div>
@@ -105,14 +137,17 @@ export function PortalShell() {
 }
 
 export function AdminShell() {
-  const items = [{ to: "/admin", label: "Clients", end: true }];
+  const items = [
+    { to: "/admin", label: "Clients", end: true },
+    { to: "/admin/calendar", label: "Master calendar" },
+  ];
   return (
     <div className="shell">
       <aside className="rail">
         <Brand />
         <div className="rail-client">
           <span className="rail-kicker">Studio AM</span>
-          <strong>Agency view</strong>
+          <strong>All clients</strong>
         </div>
         <nav className="rail-nav" aria-label="Admin">
           {items.map((i) => (

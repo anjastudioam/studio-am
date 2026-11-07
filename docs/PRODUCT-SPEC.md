@@ -4,6 +4,10 @@ Status: Draft 1, 7 Nov 2026
 Portal address (planned): portal.studio-am.co.za
 Repo: github.com/anjastudioam/studio-am
 
+> **Revision, 7 Nov 2026: this is now an internal tool.** Clients will not sign in. Studio AM uses one shared account to work across all clients: switch between clients, edit everything per client, and use ONE master content calendar showing every client together (colour-coded, filterable).
+> Sections 3 (roles), 6 (permissions) and the client approval flow below describe the original client-facing design. That code is built and tested but switched off in the interface, in case client access is wanted later. The per-client data model (section 7) is unchanged and still correct.
+> A shared login means the activity log cannot tell the two of you apart. Add separate team accounts when more than one person works in it.
+
 ---
 
 ## 1. Objective

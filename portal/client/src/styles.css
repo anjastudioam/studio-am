@@ -761,6 +761,81 @@ textarea:focus {
   white-space: nowrap;
 }
 
+/* ---------- Master calendar ---------- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.2rem;
+  align-items: end;
+  margin-bottom: 1.6rem;
+}
+.filters .field {
+  flex: 0 1 14rem;
+}
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex: 1 1 18rem;
+}
+.legend button {
+  font: inherit;
+  font-size: 0.92rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.8rem;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.legend button.active {
+  border-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, white);
+}
+.dot {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--c, var(--muted));
+  flex: none;
+}
+.cal-post.by-client {
+  border-left-color: var(--c);
+  background: color-mix(in srgb, var(--c) 12%, white);
+}
+.cal-post.by-client:hover {
+  background: color-mix(in srgb, var(--c) 22%, white);
+}
+.cal-post.by-client .cal-post-state {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.switcher {
+  display: block;
+  margin-top: 0.6rem;
+}
+.switcher select {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(29, 29, 20, 0.35);
+  font-weight: 500;
+}
+.rail-group {
+  display: grid;
+  gap: 0.4rem;
+}
+.rail-nav a.mobile-only {
+  display: none;
+}
+
 /* ---------- Drawer ---------- */
 .drawer-wrap {
   position: fixed;
@@ -991,10 +1066,16 @@ textarea:focus {
     display: flex;
     align-items: center;
   }
-  .rail-back {
-    order: 3;
-    padding: 0.4rem 0.7rem;
-    min-height: 44px;
+  .rail-group {
+    display: none;
+  }
+  .rail-nav a.mobile-only {
+    display: flex;
+  }
+  .switcher select {
+    min-height: 36px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.95rem;
   }
   .rail-foot {
     margin: 0;

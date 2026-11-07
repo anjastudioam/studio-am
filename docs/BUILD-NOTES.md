@@ -38,6 +38,14 @@ What this means for the build:
 - Docker image not yet built or run (no Docker in the build environment).
 
 ### Next steps
-1. Rework for internal use (master calendar, client switcher, hide client-facing controls).
-2. Demo deployment on Render + Neon (dummy data only).
+1. Demo deployment on Render + Neon (dummy data only).
 3. Move to the VPS before real client information goes in.
+
+## 7 Nov 2026: reworked for internal use (done)
+One shared account. Added: master content calendar across all clients (colour-coded, filter by client and status, add and edit posts for any client), client switcher in the side bar, rename client. Removed from the interface: client invites and the "viewing as" banner. Client sign-in and approvals remain in the code, switched off.
+44 server tests pass; automated browser checks passed for the master calendar, filters, adding and editing posts, switcher and phone layout.
+
+### Next steps
+1. Demo deployment on Render + Neon (dummy data only).
+2. Move to the VPS before real client information goes in.
+3. Vector (SVG) version of the logo.
