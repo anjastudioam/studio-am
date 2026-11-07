@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   FolderKanban,
   FolderOpen,
+  History,
   Globe,
   LayoutDashboard,
   Library,
@@ -26,9 +27,10 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { actionLabel, timeAgo } from "../activity";
 import { useAuth } from "../auth";
 import { useLoad } from "../hooks";
-import type { AdminClient, Home } from "../types";
+import type { AdminClient, AuditRow, Home } from "../types";
 import { GlobalSearch } from "./GlobalSearch";
 import { Loading } from "./ui";
 
@@ -172,6 +174,56 @@ function NewMenu() {
   );
 }
 
+function ActivityMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const feed = useLoad<AuditRow[]>(open ? "/api/admin/audit" : null);
+  const clients = useLoad<AdminClient[]>(open ? "/api/admin/clients" : null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const name = new Map((clients.data ?? []).map((c) => [c.id, c.name.replace(/\s*\(demo\)/i, "")]));
+  const rows = (feed.data ?? []).filter((a) => a.action !== "auth.login").slice(0, 12);
+  return (
+    <div className="new-menu activity-menu" ref={ref}>
+      <button type="button" className="icon-btn" aria-label="Recent activity" title="Recent activity" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <History {...ICON} />
+      </button>
+      {open ? (
+        <div className="menu-pop activity-pop glass" role="dialog" aria-label="Recent activity">
+          <h2>Recent activity</h2>
+          {feed.loading ? (
+            <p className="muted small">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="muted small">Changes you make will show up here.</p>
+          ) : (
+            <ul className="rows plain">
+              {rows.map((a) => (
+                <li key={a.id}>
+                  <span className="rows-main">
+                    <strong>{actionLabel(a.action)}</strong>
+                    <span className="muted small">{a.clientId ? (name.get(a.clientId) ?? "") : ""}</span>
+                  </span>
+                  <span className="muted small">{timeAgo(a.createdAt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function initialsOf(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
 }
@@ -215,6 +267,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <div className="top-spacer" />
           <GlobalSearch />
           <NewMenu />
+          <ActivityMenu />
           <div className="who">
             <span className="avatar" aria-hidden="true">{initialsOf(user?.name ?? "")}</span>
             <span className="who-name">{user?.name}</span>

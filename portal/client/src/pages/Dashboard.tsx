@@ -1,13 +1,13 @@
-import { CalendarDays, ChevronRight, CircleAlert, ListChecks, Plus, UserPlus } from "lucide-react";
+import { CalendarDays, Check, ChevronRight, CircleAlert, ListChecks, Plus, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { actionLabel, timeAgo } from "../activity";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { ErrorNote, Loading } from "../components/ui";
 import { fmtShort, plural, todayIso } from "../format";
 import { useLoad } from "../hooks";
-import { AdminClient, AuditRow, MasterPost, MasterTask, STAGES, STATUS_LABEL, stageOf } from "../types";
+import { money } from "../modules";
+import { AdminClient, MasterPost, MasterTask, STAGES, STATUS_LABEL, stageOf } from "../types";
 import { monthGrid } from "./Calendar";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -75,12 +75,107 @@ function MiniCalendar({ posts }: { posts: MasterPost[] }) {
   );
 }
 
+type Tracker = {
+  invoicedThisMonth: number; invoicedCount: number; outstanding: number; outstandingCount: number; overdue: number; overdueCount: number;
+  paidThisMonth: number; paidCount: number; dueSoon: number; dueSoonCount: number; draftCount: number; total: number;
+  watch: { id: string; title: string; number: string | null; clientName: string | null; amount: number; date: string | null; daysLate: number; late: boolean; to: string }[];
+};
+
+function dueLabel(date: string | null, today: string) {
+  if (!date) return "No date";
+  if (date < today) return `Overdue · ${fmtShort(date)}`;
+  if (date === today) return "Today";
+  return fmtShort(date);
+}
+
+function MoneyTracker({ data, onChanged }: { data: Tracker; onChanged: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const markPaid = async (id: string) => {
+    setBusy(id);
+    setErr(null);
+    try {
+      await api.patch(`/api/admin/records/finance/${id}`, { status: "PAID", data: { paidDate: todayIso() } });
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't mark that as paid");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const figures = [
+    { label: "Invoiced this month", value: data.invoicedThisMonth, note: `${data.invoicedCount} ${plural(data.invoicedCount, "invoice", "invoices")}` },
+    { label: "Received this month", value: data.paidThisMonth, note: `${data.paidCount} paid`, tone: "ok" },
+    { label: "Outstanding", value: data.outstanding, note: `${data.outstandingCount} unpaid${data.dueSoonCount ? `, ${data.dueSoonCount} due this week` : ""}` },
+    { label: "Overdue", value: data.overdue, note: data.overdueCount ? `${data.overdueCount} to chase` : "Nothing late", tone: data.overdueCount ? "bad" : "" },
+  ];
+  const today = todayIso();
+  return (
+    <>
+      <header>
+        <h2 id="h-money">Invoices and payments</h2>
+        <Link className="pill" to="/admin/finance">
+          Finance
+        </Link>
+      </header>
+      {data.total === 0 ? (
+        <p className="muted">
+          No invoices tracked yet. <Link className="text-link" to="/admin/finance?new=1">Add the first one</Link> to see what's owed and what's been paid.
+        </p>
+      ) : (
+        <>
+          <dl className="money-figs">
+            {figures.map((f) => (
+              <div key={f.label} className={f.tone ? `m-${f.tone}` : ""}>
+                <dt>{f.label}</dt>
+                <dd>{money(f.value)}</dd>
+                <span className="muted small">{f.note}</span>
+              </div>
+            ))}
+          </dl>
+          {data.watch.length === 0 ? (
+            <p className="muted small">No unpaid invoices with a due date.</p>
+          ) : (
+            <ul className="rows money-watch" aria-label="Invoices to follow up">
+              {data.watch.map((w) => (
+                <li key={w.id}>
+                  <Link to={w.to}>
+                    <span className="rows-main">
+                      <strong>{w.clientName?.replace(/\s*\(demo\)/i, "") ?? w.title}</strong>
+                      <span className="muted small">
+                        {[w.number, w.clientName ? w.title : null].filter(Boolean).join(" · ") || "Invoice"}
+                      </span>
+                    </span>
+                    <span className="money-amt">
+                      <b>{money(w.amount)}</b>
+                      <span className={w.late ? "late small" : "muted small"}>{dueLabel(w.date, today)}</span>
+                    </span>
+                  </Link>
+                  <button type="button" className="pill pay-btn" disabled={busy === w.id} onClick={() => markPaid(w.id)} aria-label={`Mark ${w.title} as paid`}>
+                    <Check size={14} aria-hidden="true" /> Paid
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data.draftCount ? (
+            <p className="muted small" style={{ marginTop: ".6rem" }}>
+              {data.draftCount} draft {plural(data.draftCount, "invoice", "invoices")} not sent yet.
+            </p>
+          ) : null}
+        </>
+      )}
+      <ErrorNote message={err} />
+    </>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuth();
   const clients = useLoad<AdminClient[]>("/api/admin/clients");
   const posts = useLoad<MasterPost[]>("/api/admin/posts");
   const tasks = useLoad<MasterTask[]>("/api/admin/tasks");
-  const audit = useLoad<AuditRow[]>("/api/admin/audit");
+  const tracker = useLoad<Tracker>("/api/admin/records/finance/tracker");
   const recAttention = useLoad<{ overdue: { label: string; title: string; clientName: string | null; to: string }[] }>("/api/admin/records/attention");
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   const [tickError, setTickError] = useState<string | null>(null);
@@ -94,11 +189,10 @@ export function DashboardPage() {
   const firstName = user?.name.split(" ")[0] ?? "";
   const open = tasks.data.filter((t) => !t.done && !ticked.has(t.id));
   const overdue = open.filter((t) => t.dueDate && t.dueDate < today);
-  const focus = open.filter((t) => t.dueDate && t.dueDate <= today).sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+  const nextTasks = [...open].sort((a, b) => (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31") || a.title.localeCompare(b.title));
   const upcoming = posts.data.filter((p) => p.publishDate >= today && stageOf(p.status) !== "PUBLISHED" && stageOf(p.status) !== "ARCHIVED").slice(0, 5);
   const awaiting = posts.data.filter((p) => stageOf(p.status) === "INTERNAL_REVIEW");
   const drafts = posts.data.filter((p) => stageOf(p.status) === "IDEA");
-  const clientName = new Map(clients.data.map((c) => [c.id, c.name]));
 
   const statusCounts = STAGES.map((s) => ({
     label: STATUS_LABEL[s],
@@ -121,8 +215,6 @@ export function DashboardPage() {
   if (awaiting.length) attention.push({ key: "a", text: `${awaiting.length} ${plural(awaiting.length, "post is", "posts are")} in internal review`, to: "/admin/calendar?status=INTERNAL_REVIEW" });
   if (overdue.length) attention.push({ key: "o", text: `${overdue.length} overdue ${plural(overdue.length, "task", "tasks")}`, to: "/admin/tasks" });
   if (drafts.length) attention.push({ key: "d", text: `${drafts.length} content ${plural(drafts.length, "idea", "ideas")} not yet in production`, to: "/admin/social" });
-
-  const activity = (audit.data ?? []).filter((a) => a.action !== "auth.login").slice(0, 5);
 
   return (
     <div className="dash">
@@ -184,34 +276,36 @@ export function DashboardPage() {
         </Link>
       </nav>
 
-      <section className="card glass d-focus" aria-labelledby="h-focus">
+      <section className="card glass d-todo" aria-labelledby="h-todo">
         <header>
-          <h2 id="h-focus">Today's focus</h2>
+          <h2 id="h-todo">Up next</h2>
           <Link className="pill" to="/admin/tasks">
-            All tasks
+            All {open.length} {plural(open.length, "task", "tasks")}
           </Link>
         </header>
-        {focus.length === 0 ? (
-          <p className="muted">Nothing due today. Open tasks live in the Task Manager.</p>
+        {nextTasks.length === 0 ? (
+          <p className="muted">No open to-dos. Add one from a client or the Task Manager.</p>
         ) : (
           <ul className="todo">
-            {focus.slice(0, 5).map((t) => (
+            {nextTasks.slice(0, 10).map((t) => (
               <li key={t.id}>
                 <label className="check">
                   <input type="checkbox" checked={false} onChange={() => tick(t)} aria-label={`Mark done: ${t.title}`} />
-                  <span>
+                  <span className="todo-body">
                     <span className="todo-title">{t.title}</span>
-                    <span className="muted small">
-                      {t.clientName.replace(/\s*\(demo\)/i, "")}
-                      {t.dueDate && t.dueDate < today ? ` · overdue since ${fmtShort(t.dueDate)}` : ""}
-                    </span>
+                    <span className="muted small">{t.clientName.replace(/\s*\(demo\)/i, "")}</span>
                   </span>
+                  <span className={`todo-due small ${t.dueDate && t.dueDate < today ? "late" : "muted"}`}>{t.dueDate ? (t.dueDate === today ? "Today" : fmtShort(t.dueDate)) : "No date"}</span>
                 </label>
               </li>
             ))}
           </ul>
         )}
         <ErrorNote message={tickError} />
+      </section>
+
+      <section className="card glass d-money" aria-labelledby="h-money">
+        {tracker.loading ? <Loading /> : tracker.data ? <MoneyTracker data={tracker.data} onChanged={() => void tracker.reload()} /> : <ErrorNote message={tracker.error} />}
       </section>
 
       <section className="card glass d-cal" aria-label="Calendar">
@@ -239,40 +333,9 @@ export function DashboardPage() {
         )}
       </section>
 
-      <section className="card glass d-dir" aria-labelledby="h-dir">
-        <header>
-          <h2 id="h-dir">Client directory</h2>
-          <Link className="pill" to="/admin/clients">
-            Manage
-          </Link>
-        </header>
-        <ul className="dir">
-          {active.map((c) => (
-            <li key={c.id} style={{ display: "contents" }}>
-              <Link to={`/c/${c.slug}`}>
-                <span className="avatar">{initials(c.name)}</span>
-                <strong>{c.name.replace(/\s*\(demo\)/i, "")}</strong>
-                <span className="badge">
-                  {c.openTasks} open {plural(c.openTasks, "task", "tasks")}
-                </span>
-              </Link>
-            </li>
-          ))}
-          <li style={{ display: "contents" }}>
-            <Link to="/admin/clients?new=1">
-              <span className="avatar ghost">
-                <Plus size={20} aria-hidden="true" />
-              </span>
-              <strong>Add client</strong>
-              <span className="badge">Start a new profile</span>
-            </Link>
-          </li>
-        </ul>
-      </section>
-
       <section className="card glass d-up" aria-labelledby="h-up">
         <header>
-          <h2 id="h-up">Up next</h2>
+          <h2 id="h-up">Posts coming up</h2>
           <Link className="pill" to="/admin/calendar">
             Calendar
           </Link>
@@ -320,25 +383,35 @@ export function DashboardPage() {
         )}
       </section>
 
-      <section className="card glass d-act" aria-labelledby="h-act">
+      <section className="card glass d-dir" aria-labelledby="h-dir">
         <header>
-          <h2 id="h-act">Recent activity</h2>
+          <h2 id="h-dir">Client directory</h2>
+          <Link className="pill" to="/admin/clients">
+            Manage
+          </Link>
         </header>
-        {activity.length === 0 ? (
-          <p className="muted">Changes you make will show up here.</p>
-        ) : (
-          <ul className="rows plain">
-            {activity.map((a) => (
-              <li key={a.id}>
-                <span className="rows-main">
-                  <strong>{actionLabel(a.action)}</strong>
-                  <span className="muted small">{a.clientId ? (clientName.get(a.clientId) ?? "") : ""}</span>
+        <ul className="dir">
+          {active.map((c) => (
+            <li key={c.id} style={{ display: "contents" }}>
+              <Link to={`/c/${c.slug}`}>
+                <span className="avatar">{initials(c.name)}</span>
+                <strong>{c.name.replace(/\s*\(demo\)/i, "")}</strong>
+                <span className="badge">
+                  {c.openTasks} open {plural(c.openTasks, "task", "tasks")}
                 </span>
-                <span className="muted small">{timeAgo(a.createdAt)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+              </Link>
+            </li>
+          ))}
+          <li style={{ display: "contents" }}>
+            <Link to="/admin/clients?new=1">
+              <span className="avatar ghost">
+                <Plus size={20} aria-hidden="true" />
+              </span>
+              <strong>Add client</strong>
+              <span className="badge">Start a new profile</span>
+            </Link>
+          </li>
+        </ul>
       </section>
     </div>
   );

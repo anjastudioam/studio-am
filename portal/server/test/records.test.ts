@@ -130,4 +130,29 @@ describe("module records", () => {
     await ctx.db.delete(clients).where((await import("drizzle-orm")).eq(clients.id, s.b.id));
     expect((await admin.get("/api/admin/records/projects")).body).toHaveLength(0);
   });
+
+  it("gives every new to-do a date and shows it on the calendar feed", async () => {
+    const res = await admin.post("/api/c/alpha-co/tasks").send({ title: "Undated" }).expect(201);
+    expect(res.body.dueDate).toBe(iso(0));
+    const feed = (await admin.get(`/api/admin/records/agenda?from=${iso(-1)}&to=${iso(1)}`).expect(200)).body;
+    expect(feed.some((x: any) => x.kind === "task" && x.title === "Undated")).toBe(true);
+  });
+
+  it("summarises invoices for the dashboard tracker, ignoring quotes and expenses", async () => {
+    const send = (b: object) => admin.post("/api/admin/records/finance").send({ clientId: s.a.id, ...b }).expect(201);
+    await send({ title: "Late", amount: 1000, status: "SENT", date: iso(-5), data: { docType: "Invoice", number: "INV-1" } });
+    await send({ title: "Soon", amount: 500, status: "SENT", date: iso(3), data: { docType: "Invoice" } });
+    await send({ title: "Paid", amount: 250, status: "PAID", date: iso(-1), data: { docType: "Invoice", paidDate: iso(0) } });
+    await send({ title: "A quote", amount: 9999, status: "SENT", date: iso(-9), data: { docType: "Quote" } });
+    await send({ title: "Draft", amount: 70, status: "DRAFT", data: { docType: "Invoice" } });
+    const t = (await admin.get("/api/admin/records/finance/tracker").expect(200)).body;
+    expect(t.overdue).toBe(1000);
+    expect(t.overdueCount).toBe(1);
+    expect(t.outstanding).toBe(1500);
+    expect(t.dueSoon).toBe(500);
+    expect(t.draftCount).toBe(1);
+    expect(t.watch[0].title).toBe("Late");
+    expect(t.watch[0].daysLate).toBe(5);
+    await request(ctx.app).get("/api/admin/records/finance/tracker").expect(401);
+  });
 });

@@ -187,6 +187,62 @@ export function recordRoutes(opts: { db: Db }) {
     }),
   );
 
+  /** Money tracker for the dashboard: what is invoiced, owed, late and received. Quotes and expenses are not income, so they are left out. */
+  r.get(
+    "/finance/tracker",
+    wrap(async (_req, res) => {
+      const rows = await db.select(rowSelect).from(records).leftJoin(clients, eq(clients.id, records.clientId)).where(eq(records.module, "finance"));
+      const t = today();
+      const month = t.slice(0, 7);
+      const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const days = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
+      const rand = (x: { amountCents: number | null }) => (x.amountCents ?? 0) / 100;
+      const sum = (xs: { amountCents: number | null }[]) => xs.reduce((a, x) => a + rand(x), 0);
+      const dataOf = (x: (typeof rows)[number]) => (x.data ?? {}) as Record<string, unknown>;
+
+      const income = rows.filter((x) => ["Invoice", "Retainer", undefined].includes(dataOf(x).docType as string | undefined));
+      const owing = income.filter((x) => x.status === "SENT" || x.status === "OVERDUE");
+      const late = owing.filter((x) => !!x.date && x.date < t);
+      const notYetDue = owing.filter((x) => !x.date || x.date >= t);
+      const paid = income.filter((x) => x.status === "PAID");
+      const paidOn = (x: (typeof rows)[number]) => String(dataOf(x).paidDate ?? x.date ?? x.createdAt.toISOString().slice(0, 10));
+      const paidThisMonth = paid.filter((x) => paidOn(x).startsWith(month));
+      const issuedOn = (x: (typeof rows)[number]) => String(dataOf(x).issueDate ?? x.createdAt.toISOString().slice(0, 10));
+      const invoicedThisMonth = income.filter((x) => x.status !== "DRAFT" && x.status !== "CANCELLED" && issuedOn(x).startsWith(month));
+      const dueSoon = notYetDue.filter((x) => !!x.date && x.date <= in7);
+
+      const watch = [...late.sort((a, b) => String(a.date).localeCompare(String(b.date))), ...notYetDue.filter((x) => !!x.date).sort((a, b) => String(a.date).localeCompare(String(b.date)))]
+        .slice(0, 6)
+        .map((x) => ({
+          id: x.id,
+          title: x.title,
+          number: (dataOf(x).number as string | undefined) ?? null,
+          clientName: x.clientName,
+          amount: rand(x),
+          date: x.date,
+          daysLate: x.date && x.date < t ? days(t, x.date) : 0,
+          late: !!x.date && x.date < t,
+          to: `/admin/finance?open=${x.id}`,
+        }));
+
+      res.json({
+        invoicedThisMonth: sum(invoicedThisMonth),
+        invoicedCount: invoicedThisMonth.length,
+        outstanding: sum(owing),
+        outstandingCount: owing.length,
+        overdue: sum(late),
+        overdueCount: late.length,
+        paidThisMonth: sum(paidThisMonth),
+        paidCount: paidThisMonth.length,
+        dueSoon: sum(dueSoon),
+        dueSoonCount: dueSoon.length,
+        draftCount: income.filter((x) => x.status === "DRAFT").length,
+        watch,
+        total: rows.length,
+      });
+    }),
+  );
+
   /** Everything that needs attention across modules, for the dashboard. */
   r.get(
     "/attention",
@@ -354,7 +410,7 @@ export function recordRoutes(opts: { db: Db }) {
       const actor = req.user!.id;
 
       if (action === "toTask") {
-        const [t] = await db.insert(tasks).values({ clientId: needClient(), title: rec.title, notes: data.details ?? null, owner: "AGENCY", priority: String(data.priority ?? "Normal").toUpperCase() }).returning();
+        const [t] = await db.insert(tasks).values({ clientId: needClient(), title: rec.title, notes: data.details ?? null, owner: "AGENCY", dueDate: today(), priority: String(data.priority ?? "Normal").toUpperCase() }).returning();
         await db.update(records).set({ status: "APPROVED", updatedAt: new Date() }).where(eq(records.id, rec.id));
         await audit(db, { actorUserId: actor, clientId, action: "ideas.to_task", entity: "task", entityId: t.id });
         return res.json({ ok: true, message: "Added to that client's to-dos." });
@@ -372,7 +428,7 @@ export function recordRoutes(opts: { db: Db }) {
         const items = lines(data[key]);
         if (!items.length) throw new HttpError(400, action === "actionsToTasks" ? "Add action items first, one per line" : "Add recommendations first, one per line");
         const cid = needClient();
-        await db.insert(tasks).values(items.map((title) => ({ clientId: cid, title: title.slice(0, 200), owner: "AGENCY" as const, notes: `From ${m.singular}: ${rec.title}` })));
+        await db.insert(tasks).values(items.map((title) => ({ clientId: cid, title: title.slice(0, 200), owner: "AGENCY" as const, dueDate: today(), notes: `From ${m.singular}: ${rec.title}` })));
         await db.update(records).set({ data: { ...data, [flag]: true }, updatedAt: new Date() }).where(eq(records.id, rec.id));
         await audit(db, { actorUserId: actor, clientId: cid, action: `${m.key}.to_tasks`, entity: m.key, entityId: rec.id });
         return res.json({ ok: true, message: `Created ${items.length} to-do${items.length === 1 ? "" : "s"}.` });

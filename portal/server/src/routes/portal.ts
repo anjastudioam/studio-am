@@ -175,6 +175,8 @@ export function portalRoutes(opts: { db: Db }) {
 
       if (cfg.stampCreator) values.createdByUserId = req.user!.id;
       if (name === "posts" && !values.status) values.status = "DRAFT";
+      // Every to-do gets a date so it always lands on the calendar and in "Up next".
+      if (name === "tasks" && !values.dueDate) values.dueDate = new Date().toISOString().slice(0, 10);
 
       const row = await req.scope!.create(name, values);
       if (name === "posts") {

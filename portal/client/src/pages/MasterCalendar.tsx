@@ -12,15 +12,11 @@ const CLIENT_COLOURS = ["#2f6b9a", "#b5542c", "#6b4c9a", "#2f8a6b", "#c2802b", "
 
 type AgendaItem = { kind: string; label: string; id: string; title: string; date: string; clientName: string | null; to: string; overdue: boolean };
 
-function Agenda({ y, m, clientName }: { y: number; m: number; clientName: string }) {
-  const last = new Date(y, m + 1, 0).getDate();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const feed = useLoad<AgendaItem[]>(`/api/admin/records/agenda?from=${y}-${pad(m + 1)}-01&to=${y}-${pad(m + 1)}-${pad(last)}`);
-  const items = (feed.data ?? []).filter((i) => i.kind !== "post" && (!clientName || i.clientName === clientName));
+function Agenda({ m, items, loading }: { m: number; items: AgendaItem[]; loading: boolean }) {
   return (
     <section className="block agenda">
-      <h2>Also due in {MONTH_NAMES[m]}</h2>
-      {feed.loading ? <Loading /> : items.length === 0 ? (
+      <h2>To-dos, invoices and deadlines in {MONTH_NAMES[m]}</h2>
+      {loading ? <Loading /> : items.length === 0 ? (
         <p className="muted">No project deadlines, invoices, meetings, renewals or to-dos fall in this month.</p>
       ) : (
         <ul className="rows plain agenda-list">
@@ -52,6 +48,9 @@ export function MasterCalendarPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newFor, setNewFor] = useState("");
+  const lastDay = new Date(cursor.y, cursor.m + 1, 0).getDate();
+  const mm = String(cursor.m + 1).padStart(2, "0");
+  const feed = useLoad<AgendaItem[]>(`/api/admin/records/agenda?from=${cursor.y}-${mm}-01&to=${cursor.y}-${mm}-${String(lastDay).padStart(2, "0")}`);
 
   useEffect(() => {
     if (!wide) setView("list");
@@ -93,6 +92,11 @@ export function MasterCalendarPage() {
     for (const p of visible) m.set(p.publishDate, [...(m.get(p.publishDate) ?? []), p]);
     return m;
   }, [visible]);
+
+  const clientNameFilter = (clients.data ?? []).find((c) => c.id === clientFilter)?.name ?? "";
+  const otherItems = (feed.data ?? []).filter((i) => i.kind !== "post" && (!clientNameFilter || i.clientName === clientNameFilter));
+  const itemsByDate = new Map<string, AgendaItem[]>();
+  for (const i of otherItems) itemsByDate.set(i.date, [...(itemsByDate.get(i.date) ?? []), i]);
 
   if (posts.loading || clients.loading) return <Loading />;
   if (!posts.data || !clients.data) return <ErrorNote message={posts.error ?? clients.error} />;
@@ -212,6 +216,14 @@ export function MasterCalendarPage() {
                       </button>
                     ))
                   : null}
+                {d
+                  ? (itemsByDate.get(d) ?? []).map((i) => (
+                      <Link key={i.kind + i.id} to={i.to} className={`cal-item kind-${i.kind} ${i.overdue ? "late" : ""}`} title={`${i.label}: ${i.title}${i.clientName ? ` (${i.clientName})` : ""}`}>
+                        <span className="cal-item-kind">{i.label}</span>
+                        <span className="cal-item-title">{i.title}</span>
+                      </Link>
+                    ))
+                  : null}
               </div>
             ))}
           </div>
@@ -240,7 +252,7 @@ export function MasterCalendarPage() {
         </ul>
       )}
 
-      <Agenda y={cursor.y} m={cursor.m} clientName={clients.data.find((c) => c.id === clientFilter)?.name ?? ""} />
+      <Agenda m={cursor.m} items={otherItems} loading={feed.loading} />
 
       {open ? (
         <Drawer title={`${open.clientName}, ${fmtShort(open.publishDate)}`} onClose={() => setOpenId(null)}>
