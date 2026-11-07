@@ -155,4 +155,21 @@ describe("module records", () => {
     expect(t.watch[0].daysLate).toBe(5);
     await request(ctx.app).get("/api/admin/records/finance/tracker").expect(401);
   });
+
+  it("keeps task status, done, priority and subtasks consistent", async () => {
+    const c = (await admin.post("/api/c/alpha-co/tasks").send({ title: "Plan", priority: "HIGH", subtasks: [{ id: "a", title: "Draft", done: false }] }).expect(201)).body;
+    expect(c.status).toBe("TODO");
+    expect(c.priority).toBe("HIGH");
+    const doing = (await admin.patch(`/api/c/alpha-co/tasks/${c.id}`).send({ status: "DOING" }).expect(200)).body;
+    expect(doing.done).toBe(false);
+    const done = (await admin.patch(`/api/c/alpha-co/tasks/${c.id}`).send({ status: "DONE" }).expect(200)).body;
+    expect(done.done).toBe(true);
+    const reopened = (await admin.patch(`/api/c/alpha-co/tasks/${c.id}`).send({ done: false }).expect(200)).body;
+    expect(reopened.status).toBe("TODO");
+    const ticked = (await admin.patch(`/api/c/alpha-co/tasks/${c.id}`).send({ done: true }).expect(200)).body;
+    expect(ticked.status).toBe("DONE");
+    await admin.patch(`/api/c/alpha-co/tasks/${c.id}`).send({ priority: "SOON" }).expect(400);
+    const all = (await admin.get("/api/admin/tasks").expect(200)).body;
+    expect(all[0].subtasks).toHaveLength(1);
+  });
 });

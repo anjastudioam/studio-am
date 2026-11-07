@@ -22,7 +22,21 @@ export type LinkItem = { id: string; type: string; title: string; url: string };
 export type FileItem = { id: string; folder: string; title: string; url: string; note: string | null; itemDate: string | null };
 export type Idea = { id: string; title: string; note: string | null; url: string | null; pillar: string | null; createdAt: string };
 export type MoodItem = { id: string; imageUrl: string; caption: string | null; tags: string[] };
-export type Task = { id: string; title: string; dueDate: string | null; owner: "AGENCY" | "CLIENT"; done: boolean };
+export type Priority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+export type TaskStatus = "TODO" | "DOING" | "DONE";
+export type Subtask = { id: string; title: string; done: boolean };
+export const PRIORITIES: { value: Priority; label: string }[] = [
+  { value: "URGENT", label: "Urgent" },
+  { value: "HIGH", label: "High" },
+  { value: "NORMAL", label: "Normal" },
+  { value: "LOW", label: "Low" },
+];
+export const TASK_STATUS: { value: TaskStatus; label: string }[] = [
+  { value: "TODO", label: "To do" },
+  { value: "DOING", label: "In progress" },
+  { value: "DONE", label: "Done" },
+];
+export type Task = { id: string; title: string; dueDate: string | null; owner: "AGENCY" | "CLIENT"; done: boolean; priority?: Priority; status?: TaskStatus; notes?: string | null; subtasks?: Subtask[] };
 export type Notice = { id: string; title: string; body: string; pinned: boolean; createdAt: string };
 
 export type Home = {
@@ -82,4 +96,4 @@ export const linkLabel = (v: string) => LINK_TYPES.find((t) => t.value === v)?.l
 export const folderLabel = (v: string) => FOLDERS.find((t) => t.value === v)?.label ?? v;
 
 export type MasterPost = Post & { clientId: string; clientName: string; clientSlug: string };
-export type MasterTask = { id: string; clientId: string; clientName: string; clientSlug: string; title: string; dueDate: string | null; owner: "AGENCY" | "CLIENT"; done: boolean };
+export type MasterTask = { id: string; clientId: string; clientName: string; clientSlug: string; title: string; dueDate: string | null; owner: "AGENCY" | "CLIENT"; done: boolean; priority: Priority; status: TaskStatus; notes: string | null; subtasks: Subtask[] };

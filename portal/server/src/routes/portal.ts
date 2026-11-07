@@ -33,6 +33,10 @@ type ResourceConfig = {
   stampCreator?: boolean;
 };
 
+export const TASK_PRIORITIES = ["LOW", "NORMAL", "HIGH", "URGENT"] as const;
+export const TASK_STATUSES = ["TODO", "DOING", "DONE"] as const;
+const subtasks = z.array(z.object({ id: z.string().trim().min(1).max(40), title: z.string().trim().min(1).max(200), done: z.boolean() }).strict()).max(40);
+
 const RESOURCES: Record<ResourceName, ResourceConfig> = {
   links: {
     create: z.object({ type: z.enum(linkTypes), title, url: httpsUrl, sortOrder: z.number().int().min(0).max(9999).optional() }).strict(),
@@ -84,8 +88,30 @@ const RESOURCES: Record<ResourceName, ResourceConfig> = {
     stampCreator: true,
   },
   tasks: {
-    create: z.object({ title, dueDate: isoDate.optional(), owner: z.enum(["AGENCY", "CLIENT"]).optional() }).strict(),
-    update: z.object({ title, dueDate: isoDate.nullable(), owner: z.enum(["AGENCY", "CLIENT"]), done: z.boolean() }).partial().strict(),
+    create: z
+      .object({
+        title,
+        dueDate: isoDate.optional(),
+        owner: z.enum(["AGENCY", "CLIENT"]).optional(),
+        priority: z.enum(TASK_PRIORITIES).optional(),
+        status: z.enum(TASK_STATUSES).optional(),
+        notes: text(5000).optional(),
+        subtasks: subtasks.optional(),
+      })
+      .strict(),
+    update: z
+      .object({
+        title,
+        dueDate: isoDate.nullable(),
+        owner: z.enum(["AGENCY", "CLIENT"]),
+        done: z.boolean(),
+        priority: z.enum(TASK_PRIORITIES),
+        status: z.enum(TASK_STATUSES),
+        notes: text(5000).nullable(),
+        subtasks,
+      })
+      .partial()
+      .strict(),
   },
   notices: {
     create: z.object({ title, body: text(5000).optional(), pinned: z.boolean().optional() }).strict(),
@@ -177,6 +203,10 @@ export function portalRoutes(opts: { db: Db }) {
       if (name === "posts" && !values.status) values.status = "DRAFT";
       // Every to-do gets a date so it always lands on the calendar and in "Up next".
       if (name === "tasks" && !values.dueDate) values.dueDate = new Date().toISOString().slice(0, 10);
+      if (name === "tasks" && values.status === "DONE") {
+        values.done = true;
+        values.doneAt = new Date();
+      }
 
       const row = await req.scope!.create(name, values);
       if (name === "posts") {
@@ -210,7 +240,12 @@ export function portalRoutes(opts: { db: Db }) {
       const existing = await scope.get(name, id);
       if (!existing) throw new HttpError(404, "Not found");
 
-      if (name === "tasks" && "done" in values) values.doneAt = values.done ? new Date() : null;
+      if (name === "tasks") {
+        // done and status describe the same thing; keep them in step whichever one the caller sets.
+        if ("status" in values) values.done = values.status === "DONE";
+        else if ("done" in values) values.status = values.done ? "DONE" : existing.status === "DONE" ? "TODO" : existing.status;
+        if ("done" in values) values.doneAt = values.done ? new Date() : null;
+      }
       if (name === "posts") values.updatedAt = new Date();
 
       const row = await scope.update(name, id, values);

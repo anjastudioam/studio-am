@@ -223,6 +223,8 @@ export const tasks = pgTable(
     owner: taskOwnerEnum("owner").notNull().default("AGENCY"),
     priority: text("priority").notNull().default("NORMAL"),
     notes: text("notes"),
+    status: text("status").notNull().default("TODO"),
+    subtasks: jsonb("subtasks").$type<{ id: string; title: string; done: boolean }[]>().notNull().default([]),
     done: boolean("done").notNull().default(false),
     doneAt: timestamp("done_at", { withTimezone: true }),
     createdAt: createdAt(),

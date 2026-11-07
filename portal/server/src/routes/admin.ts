@@ -87,6 +87,10 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
           title: tasks.title,
           dueDate: tasks.dueDate,
           owner: tasks.owner,
+          priority: tasks.priority,
+          status: tasks.status,
+          notes: tasks.notes,
+          subtasks: tasks.subtasks,
           done: tasks.done,
         })
         .from(tasks)

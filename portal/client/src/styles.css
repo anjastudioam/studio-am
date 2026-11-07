@@ -1106,3 +1106,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .cal-item-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-item.kind-task { border-left-color: #f4c76a; background: rgba(244,199,106,.12); }
 .cal-item.kind-finance { border-left-color: #7fdc9f; background: rgba(127,220,159,.1); }
+
+/* ---------- Task Manager ---------- */
+.tm-add { display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto; gap: .8rem; align-items: end; margin-bottom: 1.4rem; }
+.tm-add .field { min-width: 0; margin: 0; }
+.tm-add input, .tm-add select { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (max-width: 1100px) { .tm-add { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tm-add > :first-child, .tm-add > .btn { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .tm-add { grid-template-columns: minmax(0, 1fr); } }
+.subtasks { list-style: none; margin: 0 0 .6rem; padding: 0; display: grid; gap: .3rem; }
+.subtasks li { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+.subtasks li.is-done .task-title { text-decoration: line-through; color: var(--muted); }
+.sub-add { display: flex; gap: .6rem; }
+.sub-add input { flex: 1; min-width: 0; }
+.drawer-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
