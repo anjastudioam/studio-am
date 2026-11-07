@@ -17,9 +17,10 @@ import { useParams } from "react-router-dom";
 import { SettingsPage } from "./pages/Settings";
 import { TaskManagerPage } from "./pages/TaskManager";
 import { TasksPage } from "./pages/Tasks";
+import { TimePage } from "./pages/Time";
 
 const ADMIN_MODULES: [string, string][] = [
-  ["projects", "projects"], ["ideas", "ideas"], ["brand", "brand"], ["websites", "websites"], ["audits", "audits"], ["meetings", "meetings"],
+  ["projects", "projects"], ["ideas", "ideas"], ["recurring", "recurring"], ["brand", "brand"], ["websites", "websites"], ["audits", "audits"], ["meetings", "meetings"],
   ["files", "files"], ["finance", "finance"], ["leads", "leads"], ["resources", "resources"], ["notices", "notices"], ["links", "links"],
 ];
 const CLIENT_MODULES: [string, string][] = [
@@ -80,6 +81,7 @@ export function App() {
             <Route key={path} path={path} element={<RecordsPage module={mod} />} />
           ))}
           <Route path="social" element={<SocialHub />} />
+          <Route path="time" element={<TimePage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route

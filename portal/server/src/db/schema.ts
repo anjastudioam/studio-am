@@ -224,6 +224,8 @@ export const tasks = pgTable(
     priority: text("priority").notNull().default("NORMAL"),
     notes: text("notes"),
     status: text("status").notNull().default("TODO"),
+    /** Where a task came from ("onboarding", "recurring"), so it can be tracked as a group. */
+    tag: text("tag"),
     subtasks: jsonb("subtasks").$type<{ id: string; title: string; done: boolean }[]>().notNull().default([]),
     done: boolean("done").notNull().default(false),
     doneAt: timestamp("done_at", { withTimezone: true }),
@@ -280,3 +282,26 @@ export const records = pgTable(
   },
   (t) => [index("records_module_idx").on(t.module, t.date), index("records_client_idx").on(t.clientId, t.module)],
 );
+
+
+/** Time logged against a client. A running timer has startedAt set and minutes null. */
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: id(),
+    clientId: clientRef(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    note: text("note").notNull().default(""),
+    workDate: date("work_date").notNull(),
+    minutes: integer("minutes"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("time_client_date_idx").on(t.clientId, t.workDate), index("time_user_idx").on(t.userId)],
+);
+
+/** Small agency-wide settings such as the target hourly rate. */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+});

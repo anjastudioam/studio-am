@@ -33,6 +33,7 @@ export type ModuleDef = {
   /** Statuses that still need work; used for "overdue" and the calendar. */
   open?: string[];
   dateLabel?: string;
+  dateRequired?: boolean;
   amountLabel?: string;
   amountRequired?: boolean;
   fields: FieldDef[];
@@ -306,6 +307,33 @@ export const MODULES: ModuleDef[] = [
       { label: "Paid", statuses: ["PAID"], kind: "amount" },
     ],
     empty: "No invoices or quotes yet. Track what you have sent, what is paid and what is late.",
+  },
+  {
+    key: "recurring",
+    label: "Recurring work",
+    singular: "recurring rule",
+    route: "/admin/recurring",
+    client: "required",
+    titleLabel: "What to create",
+    statuses: [S("ACTIVE", "Active", "ok"), S("PAUSED", "Paused")],
+    open: [],
+    dateLabel: "Next run",
+    dateRequired: true,
+    amountLabel: "Invoice amount (R)",
+    fields: [
+      { key: "kind", label: "Creates a", type: "select", options: ["To-do", "Invoice", "Post idea"], required: true },
+      { key: "frequency", label: "Repeats", type: "select", options: ["Weekly", "Monthly"], required: true },
+      { key: "monthDay", label: "Day of the month", type: "select", options: ["1", "5", "10", "15", "20", "25", "28", "Last day"], hint: "Monthly rules only. Weekly rules repeat on the weekday of the next run date." },
+      { key: "terms", label: "Payment terms for invoices", type: "select", options: ["7 days", "14 days", "30 days"], hint: "Invoices are created as drafts for you to check and send." },
+      { key: "priority", label: "To-do priority", type: "select", options: PRIORITY },
+      { key: "platform", label: "Post platform", type: "select", options: PLATFORMS },
+      { key: "lastRun", label: "Last created", type: "date", hint: "Filled in automatically." },
+      { key: "note", label: "Note", type: "longtext", wide: true, hint: "Use {month} in the name to add the month, for example Monthly report: {month}." },
+    ],
+    columns: ["client", "kind", "frequency", "status", "date"],
+    summary: [{ label: "Active rules", statuses: ["ACTIVE"], kind: "count" }],
+    actions: [],
+    empty: "Nothing repeats yet. Add monthly reports, retainer invoices or weekly planning once and they create themselves.",
   },
   {
     key: "leads",

@@ -1,3 +1,4 @@
+import { todayZA } from "../util/dates";
 import { Router } from "express";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -144,7 +145,7 @@ export function portalRoutes(opts: { db: Db }) {
         scope.list("posts"),
       ]);
       const visiblePosts = posts;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = todayZA();
 
       const folderCounts: Record<string, number> = {};
       for (const f of folders) folderCounts[f] = 0;
@@ -202,7 +203,7 @@ export function portalRoutes(opts: { db: Db }) {
       if (cfg.stampCreator) values.createdByUserId = req.user!.id;
       if (name === "posts" && !values.status) values.status = "DRAFT";
       // Every to-do gets a date so it always lands on the calendar and in "Up next".
-      if (name === "tasks" && !values.dueDate) values.dueDate = new Date().toISOString().slice(0, 10);
+      if (name === "tasks" && !values.dueDate) values.dueDate = todayZA();
       if (name === "tasks" && values.status === "DONE") {
         values.done = true;
         values.doneAt = new Date();

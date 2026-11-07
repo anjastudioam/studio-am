@@ -1119,3 +1119,51 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .sub-add { display: flex; gap: .6rem; }
 .sub-add input { flex: 1; min-width: 0; }
 .drawer-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* ---------- Timer, time tracking, onboarding ---------- */
+.timer-menu .icon-btn { width: auto; min-width: 44px; padding-inline: .6rem; display: inline-flex; align-items: center; gap: .45rem; }
+.timer-on { color: var(--accent) !important; background: var(--accent-soft) !important; }
+.timer-clock { font-variant-numeric: tabular-nums; font-size: .9rem; font-weight: 500; }
+@media (max-width: 640px) { .timer-clock { display: none; } .timer-on::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; } }
+@keyframes pulse { 50% { opacity: .35; } }
+.timer-pop { width: min(21rem, 90vw); padding: 1rem 1.1rem; display: grid; gap: .8rem; }
+.timer-pop h2 { font-size: 1rem; font-weight: 500; margin: 0; }
+.timer-big { font-size: 2.2rem; font-weight: 400; margin: 0; font-variant-numeric: tabular-nums; }
+.timer-link { background: none; border: 0; font: inherit; padding: 0; cursor: pointer; justify-self: start; }
+@media (max-width: 640px) { .timer-menu { position: static; } .timer-pop { position: fixed; left: 12px; right: 12px; top: 68px; width: auto; } }
+.time-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 14px; margin-bottom: 1.4rem; }
+.time-tile { padding: .9rem 1rem; border-radius: var(--r-m); background: rgba(255,255,255,.05); border: 1px solid var(--line); display: grid; gap: .15rem; }
+.time-tile b { font-size: 1.5rem; font-weight: 500; }
+.rate-form { display: flex; gap: .6rem; align-items: end; flex-wrap: wrap; }
+.rate-form input { width: 8rem; }
+.health { display: inline-block; padding: .12rem .65rem; border-radius: 99px; font-size: .85rem; white-space: nowrap; }
+.health-ok { background: rgba(127,220,159,.16); color: #7fdc9f; }
+.health-watch { background: rgba(244,199,106,.16); color: #f4c76a; }
+.health-loss { background: rgba(255,138,122,.16); color: #ff9b8b; }
+.health-none { background: rgba(255,255,255,.08); color: #c5d2e8; }
+.month-nav { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; }
+.month-nav h2 { margin: 0; font-size: 1.15rem; font-weight: 500; min-width: 9rem; text-align: center; }
+.time-add { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .7fr) minmax(0, 2fr) auto; gap: .8rem; align-items: end; margin: 1rem 0 1.4rem; }
+.time-add .field { min-width: 0; margin: 0; }
+.time-add input, .time-add select { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (max-width: 1100px) { .time-add { grid-template-columns: repeat(2, minmax(0, 1fr)); } .time-add > :nth-child(4), .time-add > .btn { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .time-add { grid-template-columns: minmax(0, 1fr); } }
+.time-log li { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
+.time-log .time-main { flex: 1; min-width: 12rem; display: grid; }
+.time-log input { width: 6rem; }
+.ob-bar { height: 8px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; margin: .4rem 0 .8rem; }
+.ob-bar span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.ob-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; }
+.ob-opt { display: flex; gap: .6rem; align-items: flex-start; margin: .8rem 0; }
+.ob-opt input { margin-top: .3rem; }
+.ov-wide { grid-column: 1 / -1; }
+.section-h { font-size: 1.15rem; font-weight: 500; margin: 0 0 .8rem; }
+@media (max-width: 640px) {
+  .topbar { gap: .3rem; }
+  .topbar .icon-btn, .topbar .menu-btn { min-width: 40px; width: 40px; padding: 0; }
+  .timer-menu .icon-btn { width: 40px; padding: 0; justify-content: center; }
+  .new-btn { width: 40px; min-width: 40px; min-height: 40px; }
+  .search { min-width: 40px; }
+}
+.month-nav h2 { min-width: 0; flex: 1; } .month-nav .btn { padding-inline: .9rem; }
+.time-log li { padding: .55rem 0; }

@@ -81,6 +81,91 @@ function DetailsForm({ client, onDone, onClose }: { client: AdminClient; onDone:
   );
 }
 
+type Onboarding = { started: string | null; total: number; done: number; remaining: { id: string; title: string; dueDate: string | null }[]; questionnaireId: string | null; questions: string[] };
+
+function OnboardingCard({ client, base, onChanged }: { client: AdminClient; base: string; onChanged: () => Promise<void> }) {
+  const data = useLoad<Onboarding>(`/api/admin/onboarding/${client.id}`);
+  const [recurring, setRecurring] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  if (!data.data) return null;
+  const o = data.data;
+  const hasFee = client.profile?.monthlyFee != null;
+  const finished = !!o.started && o.total > 0 && o.done === o.total;
+  if (!o.started && client.status !== "ONBOARDING") return null; // established clients don't need a nudge
+  if (o.started && client.status !== "ONBOARDING" && finished) return null;
+
+  const act = async (fn: () => Promise<unknown>, fail: string) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await fn();
+      await onChanged();
+      await data.reload();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : fail);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    const text = o.questions.map((q, i) => `${i + 1}. ${q}`).join("\n\n");
+    try {
+      await navigator.clipboard.writeText(`Hi, to get started we would love your answers to these questions:\n\n${text}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setErr("Couldn't copy. Open the questionnaire note and copy it from there.");
+    }
+  };
+
+  return (
+    <section className="card glass ov-card ov-wide" aria-labelledby="h-onb">
+      <header>
+        <h2 id="h-onb">Onboarding</h2>
+        {o.started ? <span className="muted small">{o.done} of {o.total} done</span> : null}
+      </header>
+      {!o.started ? (
+        <>
+          <p className="muted">Create the standard first weeks in one click: {o.total || 13} dated to-dos (welcome, agreement, logo and brand-asset requests, account access, kick-off, research, first audit and content plan), a discovery questionnaire and a kick-off meeting.</p>
+          <label className="ob-opt">
+            <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+            <span>
+              Also set up the repeat work: a monthly report, weekly content planning{hasFee ? " and the monthly retainer invoice" : ""}.
+              {!hasFee ? <span className="muted small"> Add the monthly fee under Edit details to include the retainer invoice.</span> : null}
+            </span>
+          </label>
+          <div className="ob-actions">
+            <Btn busy={busy} onClick={() => act(() => api.post(`/api/admin/onboarding/${client.id}`, { recurring }), "Couldn't start onboarding")}>Start onboarding</Btn>
+          </div>
+        </>
+      ) : finished ? (
+        <>
+          <p>Everything on the onboarding checklist is done.</p>
+          <div className="ob-actions">
+            <Btn busy={busy} onClick={() => act(() => api.patch(`/api/admin/clients/${client.id}`, { status: "ACTIVE" }), "Couldn't update the client")}>Mark client as active</Btn>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="ob-bar" role="progressbar" aria-valuemin={0} aria-valuemax={o.total} aria-valuenow={o.done} aria-label="Onboarding progress"><span style={{ width: `${(o.done / Math.max(1, o.total)) * 100}%` }} /></div>
+          <ul className="rows plain">
+            {o.remaining.map((t) => (
+              <li key={t.id}><Link to="/admin/tasks">{t.title}</Link><span className="muted small">{t.dueDate ? fmtDate(t.dueDate) : ""}</span></li>
+            ))}
+          </ul>
+          <div className="ob-actions">
+            <Btn kind="quiet" onClick={copy}>{copied ? "Copied" : "Copy questionnaire"}</Btn>
+            {o.questionnaireId ? <Link className="btn btn-quiet" to={`${base}/meetings?open=${o.questionnaireId}`}>Open questionnaire note</Link> : null}
+          </div>
+        </>
+      )}
+      <ErrorNote message={err} />
+    </section>
+  );
+}
+
 function Card({ title, to, children, empty }: { title: string; to?: string; children?: React.ReactNode; empty?: string }) {
   return (
     <section className="card glass ov-card">
@@ -126,6 +211,7 @@ export function HomePage() {
         actions={client ? <Btn kind="quiet" onClick={() => setEditing(true)}>Edit details</Btn> : null}
       />
       <div className="ov-grid">
+        {client ? <OnboardingCard client={client} base={base} onChanged={async () => { await clients.reload(); await reloadHome(); }} /> : null}
         <Card title="Client details">
           {client ? (
             <dl className="facts">

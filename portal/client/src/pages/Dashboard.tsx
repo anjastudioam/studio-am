@@ -185,7 +185,7 @@ export function DashboardPage() {
 
   const now = new Date();
   const today = todayIso();
-  const active = clients.data.filter((c) => c.status === "ACTIVE");
+  const active = clients.data.filter((c) => c.status === "ACTIVE" || c.status === "ONBOARDING");
   const firstName = user?.name.split(" ")[0] ?? "";
   const open = tasks.data.filter((t) => !t.done && !ticked.has(t.id));
   const overdue = open.filter((t) => t.dueDate && t.dueDate < today);

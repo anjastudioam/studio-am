@@ -8,6 +8,8 @@ import { HttpError, httpsUrl, isUuid, isoDate, wrap } from "../http";
 import { requireAdmin } from "../middleware/auth";
 import { FieldDef, MODULE_BY_KEY, MODULES, ModuleDef, SCORE_KEYS } from "../modules/registry";
 import { slugify } from "./admin";
+import { runRecurring } from "../jobs/recurring";
+import { addDays, todayZA } from "../util/dates";
 
 function invalid(err: z.ZodError) {
   const i = err.issues[0];
@@ -15,7 +17,7 @@ function invalid(err: z.ZodError) {
   return e;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => todayZA();
 
 function fieldSchema(f: FieldDef): z.ZodTypeAny {
   switch (f.type) {
@@ -194,7 +196,7 @@ export function recordRoutes(opts: { db: Db }) {
       const rows = await db.select(rowSelect).from(records).leftJoin(clients, eq(clients.id, records.clientId)).where(eq(records.module, "finance"));
       const t = today();
       const month = t.slice(0, 7);
-      const in7 = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+      const in7 = addDays(t, 7);
       const days = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 86400000);
       const rand = (x: { amountCents: number | null }) => (x.amountCents ?? 0) / 100;
       const sum = (xs: { amountCents: number | null }[]) => xs.reduce((a, x) => a + rand(x), 0);
@@ -205,9 +207,9 @@ export function recordRoutes(opts: { db: Db }) {
       const late = owing.filter((x) => !!x.date && x.date < t);
       const notYetDue = owing.filter((x) => !x.date || x.date >= t);
       const paid = income.filter((x) => x.status === "PAID");
-      const paidOn = (x: (typeof rows)[number]) => String(dataOf(x).paidDate ?? x.date ?? x.createdAt.toISOString().slice(0, 10));
+      const paidOn = (x: (typeof rows)[number]) => String(dataOf(x).paidDate ?? x.date ?? todayZA(x.createdAt));
       const paidThisMonth = paid.filter((x) => paidOn(x).startsWith(month));
-      const issuedOn = (x: (typeof rows)[number]) => String(dataOf(x).issueDate ?? x.createdAt.toISOString().slice(0, 10));
+      const issuedOn = (x: (typeof rows)[number]) => String(dataOf(x).issueDate ?? todayZA(x.createdAt));
       const invoicedThisMonth = income.filter((x) => x.status !== "DRAFT" && x.status !== "CANCELLED" && issuedOn(x).startsWith(month));
       const dueSoon = notYetDue.filter((x) => !!x.date && x.date <= in7);
 
@@ -240,6 +242,14 @@ export function recordRoutes(opts: { db: Db }) {
         watch,
         total: rows.length,
       });
+    }),
+  );
+
+  /** Creates anything that is due now. Also runs on a timer, so this is for "run it now". */
+  r.post(
+    "/recurring/run",
+    wrap(async (_req, res) => {
+      res.json(await runRecurring(db));
     }),
   );
 
@@ -320,6 +330,7 @@ export function recordRoutes(opts: { db: Db }) {
       if (m.client === "required" && !b.clientId) throw new HttpError(400, "Choose a client");
       if (b.clientId) await assertClient(b.clientId);
       if (m.amountRequired && b.amount == null) throw new HttpError(400, "An amount is required");
+      if (m.dateRequired && !b.date) throw new HttpError(400, `Choose a ${(m.dateLabel ?? "date").toLowerCase()}`);
       const status = b.status ?? m.statuses?.[0]?.key ?? null;
       const data = Object.fromEntries(Object.entries(b.data ?? {}).filter(([, v]) => v !== null && v !== ""));
       const [row] = await db
@@ -336,6 +347,7 @@ export function recordRoutes(opts: { db: Db }) {
         })
         .returning();
       await audit(db, { actorUserId: req.user!.id, clientId: row.clientId, action: `${m.key}.create`, entity: m.key, entityId: row.id });
+      if (m.key === "recurring") await runRecurring(db);
       res.status(201).json(present(m, await load(m, row.id)));
     }),
   );
@@ -369,6 +381,7 @@ export function recordRoutes(opts: { db: Db }) {
       }
       await db.update(records).set(set).where(eq(records.id, existing.id));
       await audit(db, { actorUserId: req.user!.id, clientId: existing.clientId, action: `${m.key}.update`, entity: m.key, entityId: existing.id });
+      if (m.key === "recurring") await runRecurring(db);
       res.json(present(m, await load(m, existing.id)));
     }),
   );

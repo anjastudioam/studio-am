@@ -31,7 +31,7 @@ export async function setup(opts: { rateLimit?: boolean } = {}) {
 
 export async function reset(db: Awaited<ReturnType<typeof setup>>["db"]) {
   await db.execute(
-    sql`truncate table records, audit_log, post_events, posts, ideas, mood_items, tasks, notices, link_items, file_items, sessions, login_tokens, users, clients restart identity cascade`,
+    sql`truncate table time_entries, app_settings, records, audit_log, post_events, posts, ideas, mood_items, tasks, notices, link_items, file_items, sessions, login_tokens, users, clients restart identity cascade`,
   );
 }
 

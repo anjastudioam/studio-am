@@ -4,6 +4,7 @@ import { ensureAdmin } from "./bootstrap";
 import { loadConfig } from "./config";
 import { createDb } from "./db";
 import { runMigrations } from "./db/migrate";
+import { startRecurringJob } from "./jobs/recurring";
 import { ConsoleMailer, NullMailer, ResendMailer } from "./mail/mailer";
 
 async function main() {
@@ -20,7 +21,9 @@ async function main() {
   const app = createApp({ cfg, db, mailer, clientDir: path.resolve(__dirname, "../../client/dist") });
 
   const server = app.listen(cfg.PORT, () => console.log(`Studio AM portal listening on ${cfg.PORT}`));
+  const stopJobs = startRecurringJob(db);
   const shutdown = () => {
+    stopJobs();
     server.close(() => pool.end().then(() => process.exit(0)));
   };
   process.on("SIGTERM", shutdown);

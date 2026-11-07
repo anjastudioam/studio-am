@@ -13,11 +13,14 @@ const ACTION_LABELS: Record<string, string> = {
   "ideas.to_task": "Idea turned into a to-do",
   "ideas.to_project": "Idea turned into a project",
   "leads.convert": "Lead converted to a client",
+  "recurring.run": "Recurring work created",
+  "time.log": "Time logged",
+  "onboarding.start": "Onboarding started",
 };
 const NAMES: Record<string, string> = {
   projects: "Project", ideas: "Idea", brand: "Brand profile", accounts: "Social account", captions: "Caption", hashtags: "Hashtag set",
   websites: "Website", audits: "Audit", meetings: "Meeting", files: "File", finance: "Invoice", leads: "Lead", resources: "Resource",
-  notices: "Notice", links: "Link", tasks: "To-do", posts: "Content", mood: "Moodboard item",
+  notices: "Notice", recurring: "Recurring rule", links: "Link", tasks: "To-do", posts: "Content", mood: "Moodboard item",
 };
 
 export function actionLabel(a: string): string {

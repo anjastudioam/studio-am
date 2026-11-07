@@ -11,6 +11,8 @@ import { HttpError } from "./http";
 import type { Mailer } from "./mail/mailer";
 import { originCheck, sessionLoader } from "./middleware/auth";
 import { adminRoutes } from "./routes/admin";
+import { onboardingRoutes } from "./routes/onboarding";
+import { timeRoutes } from "./routes/time";
 import { recordRoutes } from "./routes/records";
 import { authRoutes } from "./routes/auth";
 import { portalRoutes } from "./routes/portal";
@@ -70,6 +72,8 @@ export function createApp(deps: AppDeps) {
   api.use(sessionLoader(auth, production));
   api.use("/auth", authRoutes({ db, auth, production, rateLimit: limitsOn }));
   api.use("/admin/records", recordRoutes({ db }));
+  api.use("/admin/time", timeRoutes({ db }));
+  api.use("/admin/onboarding", onboardingRoutes({ db }));
   api.use("/admin", adminRoutes({ db, auth }));
   api.use("/c/:slug", portalRoutes({ db }));
   api.use((_req, _res, next) => next(new HttpError(404, "Not found")));

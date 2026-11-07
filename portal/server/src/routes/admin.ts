@@ -114,7 +114,7 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
         if (!hit) break;
         slug = `${base}-${i}`;
       }
-      const [row] = await db.insert(clients).values({ name: parsed.data.name, slug }).returning();
+      const [row] = await db.insert(clients).values({ name: parsed.data.name, slug, status: "ONBOARDING" }).returning();
       await audit(db, { actorUserId: req.user!.id, clientId: row.id, action: "client.create", entity: "client", entityId: row.id });
       res.status(201).json(row);
     }),
@@ -171,7 +171,7 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
   r.post(
     "/demo-data",
     wrap(async (req, res) => {
-      const created = await seedDemo(db);
+      const created = await seedDemo(db, req.user!.id);
       if (created) await audit(db, { actorUserId: req.user!.id, action: "demo.load" });
       res.status(created ? 201 : 200).json({ loaded: true });
     }),

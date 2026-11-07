@@ -4,6 +4,7 @@ import { api } from "../api";
 import { Btn, Empty, ErrorNote, Field, Loading, PageHead } from "../components/ui";
 import { useAction, useLoad } from "../hooks";
 import { plural } from "../format";
+import { CLIENT_STATUS } from "../types";
 import type { AdminClient } from "../types";
 
 export function ClientsPage() {
@@ -17,14 +18,14 @@ export function ClientsPage() {
   if (loading) return <Loading />;
   if (!data) return <ErrorNote message={error} />;
 
-  const active = data.filter((c) => c.status === "ACTIVE");
+  const active = data.filter((c) => c.status === "ACTIVE" || c.status === "ONBOARDING");
   const waiting = active.reduce((n, c) => n + c.awaitingApproval, 0);
   const needing = [...active].filter((c) => c.awaitingApproval > 0).sort((a, b) => b.awaitingApproval - a.awaitingApproval);
 
   const create = async (e: FormEvent) => {
     e.preventDefault();
     const res = await add.run(() => api.post<AdminClient>("/api/admin/clients", { name }));
-    if (res) nav(`/admin/clients/${res.id}`);
+    if (res) nav(`/c/${res.slug}`);
   };
 
   return (
@@ -74,7 +75,7 @@ export function ClientsPage() {
             </thead>
             <tbody>
               {data.map((c) => (
-                <tr key={c.id} className={c.status !== "ACTIVE" ? "dim" : ""}>
+                <tr key={c.id} className={c.status === "PAUSED" || c.status === "ARCHIVED" ? "dim" : ""}>
                   <td data-label="Client">
                     <Link className="strong-link" to={`/c/${c.slug}`}>
                       {c.name}
@@ -82,7 +83,7 @@ export function ClientsPage() {
                   </td>
                   <td data-label="In review">{c.awaitingApproval > 0 ? <strong className="attn">{c.awaitingApproval}</strong> : <span className="muted">None</span>}</td>
                   <td data-label="Open to-dos">{c.openTasks > 0 ? c.openTasks : <span className="muted">None</span>}</td>
-                  <td data-label="Status">{c.status === "ACTIVE" ? "Active" : c.status === "PAUSED" ? "Paused" : "Archived"}</td>
+                  <td data-label="Status">{CLIENT_STATUS[c.status]}</td>
                   <td>
                     <div className="actions-inner">
                       <Link className="text-link" to={`/c/${c.slug}`}>

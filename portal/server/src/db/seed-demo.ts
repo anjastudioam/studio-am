@@ -4,7 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, records, tasks } from "./schema";
+import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, records, tasks, timeEntries } from "./schema";
 
 const iso = (offsetDays: number) => {
   const d = new Date();
@@ -13,7 +13,7 @@ const iso = (offsetDays: number) => {
 };
 
 /** Creates the fictional demo clients, flagged is_demo so they can be removed in one click. Returns false if already loaded. */
-export async function seedDemo(db: Db): Promise<boolean> {
+export async function seedDemo(db: Db, userId?: string): Promise<boolean> {
   const existing = await db.select().from(clients).where(eq(clients.slug, "sunrise-bakery"));
   if (existing.length > 0) {
     return false;
@@ -110,6 +110,22 @@ export async function seedDemo(db: Db): Promise<boolean> {
     R("notices", "Monthly reports go out on the 5th", { data: { pinned: true, body: "Please finish client reports by the 3rd." } }),
     R("links", "Brand asset library", { data: { url: "https://drive.google.com/example-assets", category: "Google Drive" } }),
   ]);
+
+  // Repeating work and logged time, so those screens are not empty.
+  await db.update(clients).set({ profile: { monthlyFee: 8500, services: ["Social media", "Branding"], contactName: "Naledi Dlamini" } }).where(eq(clients.id, B));
+  await db.update(clients).set({ profile: { monthlyFee: 6000, services: ["Social media"], contactName: "Pieter van Wyk" } }).where(eq(clients.id, K));
+  await db.insert(records).values([
+    { ...R("recurring", "Sunrise Bakery retainer, {month}", { client: B, status: "ACTIVE", date: 24, amount: 8500, data: { kind: "Invoice", frequency: "Monthly", monthDay: "1", terms: "7 days" } }) },
+    { ...R("recurring", "Monthly report: Sunrise Bakery ({month})", { client: B, status: "ACTIVE", date: 20, data: { kind: "To-do", frequency: "Monthly", monthDay: "28", priority: "Normal" } }) },
+    { ...R("recurring", "Plan next week's content: Karoo Outfitters", { client: K, status: "ACTIVE", date: 2, data: { kind: "To-do", frequency: "Weekly", priority: "Normal" } }) },
+  ]);
+  if (userId) {
+    const t = (client: string, daysAgo: number, minutes: number, note: string) => ({ clientId: client, userId, workDate: iso(-daysAgo), minutes, note });
+    await db.insert(timeEntries).values([
+      t(B, 1, 150, "Content calendar and captions"), t(B, 3, 120, "Photo edits"), t(B, 5, 90, "Client call and notes"), t(B, 8, 180, "Packaging concepts"), t(B, 12, 240, "Brand workshop prep"),
+      t(K, 2, 300, "Website banner and landing page"), t(K, 4, 360, "Summer campaign creative"), t(K, 6, 240, "Reels edit"), t(K, 9, 270, "Strategy session and report"), t(K, 13, 210, "Shoot planning"),
+    ]);
+  }
 
   return true;
 }

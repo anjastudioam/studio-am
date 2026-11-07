@@ -4,6 +4,8 @@ import {
   CalendarDays,
   ChevronDown,
   Plus,
+  Repeat,
+  Timer,
   ClipboardCheck,
   FolderKanban,
   FolderOpen,
@@ -32,7 +34,8 @@ import { useAuth } from "../auth";
 import { useLoad } from "../hooks";
 import type { AdminClient, AuditRow, Home } from "../types";
 import { GlobalSearch } from "./GlobalSearch";
-import { Loading } from "./ui";
+import { api } from "../api";
+import { Btn, Field, Loading } from "./ui";
 
 type PortalCtx = { slug: string; home: Home; reloadHome: () => Promise<void>; isAdmin: boolean; base: string };
 const PortalContext = createContext<PortalCtx | null>(null);
@@ -54,6 +57,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { to: "/admin/projects", label: "Projects", icon: <FolderKanban {...ICON} /> },
       { to: "/admin/tasks", label: "Task Manager", icon: <ListChecks {...ICON} /> },
       { to: "/admin/calendar", label: "Calendar", icon: <CalendarDays {...ICON} /> },
+      { to: "/admin/recurring", label: "Recurring Work", icon: <Repeat {...ICON} /> },
       { to: "/admin/ideas", label: "Idea Bank", icon: <Lightbulb {...ICON} /> },
     ],
   },
@@ -72,6 +76,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin/files", label: "File Repository", icon: <FolderOpen {...ICON} /> },
       { to: "/admin/finance", label: "Finance & Invoices", icon: <Wallet {...ICON} /> },
+      { to: "/admin/time", label: "Time Tracking", icon: <Timer {...ICON} /> },
       { to: "/admin/leads", label: "Leads & Prospects", icon: <Target {...ICON} /> },
       { to: "/admin/resources", label: "Resource Library", icon: <Library {...ICON} /> },
       { to: "/admin/notices", label: "Notice Board", icon: <Megaphone {...ICON} /> },
@@ -224,6 +229,133 @@ function ActivityMenu() {
   );
 }
 
+function clockOf(ms: number) {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+}
+
+type RunningTimer = { id: string; clientId: string; clientName: string; note: string; startedAt: string } | null;
+
+function TimerMenu() {
+  const nav = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState<RunningTimer>(null);
+  const [skew, setSkew] = useState(0); // server clock minus browser clock, so the timer is right even if the laptop clock is off
+  const [tick, setTick] = useState(0);
+  const [clientId, setClientId] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const clients = useLoad<AdminClient[]>(open ? "/api/admin/clients" : null);
+
+  const apply = (r: { running: RunningTimer; now: string }) => {
+    setRunning(r.running);
+    setSkew(Date.parse(r.now) - Date.now());
+  };
+  useEffect(() => {
+    api.get<{ running: RunningTimer; now: string }>("/api/admin/time/running").then(apply).catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+
+  const elapsed = running ? Date.now() + skew - Date.parse(running.startedAt) : 0;
+  void tick;
+  const choices = (clients.data ?? []).filter((c) => c.status !== "ARCHIVED");
+  const chosen = clientId || choices[0]?.id || "";
+
+  const start = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      apply(await api.post("/api/admin/time/start", { clientId: chosen, ...(note.trim() ? { note: note.trim() } : {}) }));
+      setNote("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't start the timer");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const stop = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.post("/api/admin/time/stop");
+      setRunning(null);
+      setOpen(false);
+      window.dispatchEvent(new Event("sam:time-changed"));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't stop the timer");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="new-menu timer-menu" ref={ref}>
+      <button type="button" className={`icon-btn ${running ? "timer-on" : ""}`} aria-label={running ? `Timer running for ${running.clientName}` : "Start a timer"} title={running ? `Timing ${running.clientName}` : "Time tracking"} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Timer {...ICON} />
+        {running ? <span className="timer-clock">{clockOf(elapsed)}</span> : null}
+      </button>
+      {open ? (
+        <div className="menu-pop timer-pop glass" role="dialog" aria-label="Time tracking">
+          {running ? (
+            <>
+              <h2>Timing {running.clientName.replace(/\s*\(demo\)/i, "")}</h2>
+              <p className="timer-big" aria-live="off">{clockOf(elapsed)}</p>
+              {running.note ? <p className="muted small">{running.note}</p> : null}
+              <Btn onClick={stop} busy={busy}>
+                Stop and save
+              </Btn>
+            </>
+          ) : (
+            <>
+              <h2>Start a timer</h2>
+              <Field label="Client">
+                <select value={chosen} onChange={(e) => setClientId(e.target.value)}>
+                  {choices.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name.replace(/\s*\(demo\)/i, "")}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="What are you working on? (optional)">
+                <input value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} onKeyDown={(e) => e.key === "Enter" && chosen && start()} />
+              </Field>
+              <Btn onClick={start} busy={busy} disabled={!chosen}>
+                Start timer
+              </Btn>
+            </>
+          )}
+          {err ? <p className="late small">{err}</p> : null}
+          <button type="button" className="text-link timer-link" onClick={() => { setOpen(false); nav("/admin/time"); }}>
+            Open time tracking
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function initialsOf(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
 }
@@ -267,6 +399,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <div className="top-spacer" />
           <GlobalSearch />
           <NewMenu />
+          <TimerMenu />
           <ActivityMenu />
           <div className="who">
             <span className="avatar" aria-hidden="true">{initialsOf(user?.name ?? "")}</span>
