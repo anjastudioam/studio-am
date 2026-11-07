@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode, useEffect, useRef, useState } from "react";
-import { PostStatus, STATUS_LABEL } from "../types";
+import { PostStatus, STATUS_LABEL, stageOf } from "../types";
 
 export function Btn({
   kind = "primary",
@@ -25,7 +25,7 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function StatusChip({ status }: { status: PostStatus }) {
-  return <span className={`chip chip-${status.toLowerCase()}`}>{STATUS_LABEL[status]}</span>;
+  return <span className={`chip chip-${stageOf(status).toLowerCase()}`}>{STATUS_LABEL[status]}</span>;
 }
 
 export function ErrorNote({ message }: { message: string | null }) {

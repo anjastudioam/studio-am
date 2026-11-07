@@ -4,7 +4,7 @@ import { Btn, Drawer, Empty, ErrorNote, Loading, PageHead, StatusChip } from "..
 import { NewPost, PostDetail } from "../components/PostForms";
 import { fmtShort, todayIso } from "../format";
 import { useLoad, useMedia } from "../hooks";
-import { Post, STATUS_LABEL } from "../types";
+import { Post, STATUS_LABEL, stageOf } from "../types";
 
 export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -48,7 +48,7 @@ export function CalendarPage() {
   };
   const open = data.find((p) => p.id === openId) ?? null;
   const today = todayIso();
-  const waiting = data.filter((p) => p.status === "AWAITING_APPROVAL").length;
+  const waiting = data.filter((p) => stageOf(p.status) === "INTERNAL_REVIEW").length;
   const monthPrefix = `${cursor.y}-${String(cursor.m + 1).padStart(2, "0")}`;
   const listPosts = view === "list" ? data : data.filter((p) => p.publishDate.startsWith(monthPrefix));
 
@@ -61,7 +61,7 @@ export function CalendarPage() {
     <>
       <PageHead
         title="Content calendar"
-        lead={waiting > 0 ? `${waiting} ${waiting === 1 ? "post is" : "posts are"} waiting for approval.` : "Everything planned, and where it stands."}
+        lead={waiting > 0 ? `${waiting} ${waiting === 1 ? "post is" : "posts are"} in internal review.` : "Everything planned, and where it stands."}
         actions={
           <>
             {wide ? (
@@ -103,7 +103,7 @@ export function CalendarPage() {
                 {d ? <span className="cal-num">{Number(d.slice(8))}</span> : null}
                 {d
                   ? (byDate.get(d) ?? []).map((p) => (
-                      <button key={p.id} className={`cal-post st-${p.status.toLowerCase()}`} onClick={() => setOpenId(p.id)}>
+                      <button key={p.id} className={`cal-post st-${stageOf(p.status).toLowerCase()}`} onClick={() => setOpenId(p.id)}>
                         <span className="cal-post-plat">{p.platform}</span>
                         <span className="cal-post-state">{STATUS_LABEL[p.status]}</span>
                       </button>

@@ -1,13 +1,13 @@
 import { Router } from "express";
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { audit } from "../audit";
 import { MIN_PASSWORD_LENGTH } from "../auth/password";
 import { AuthService, normaliseEmail } from "../auth/service";
 import type { Db } from "../db";
-import { auditLog, clients, posts, tasks, users } from "../db/schema";
+import { auditLog, clients, posts, records, tasks, users } from "../db/schema";
 import { ne } from "drizzle-orm";
-import { HttpError, isUuid, wrap } from "../http";
+import { HttpError, isUuid, isoDate, wrap } from "../http";
 import { seedDemo } from "../db/seed-demo";
 import { requireAdmin } from "../middleware/auth";
 
@@ -34,7 +34,7 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
       const awaiting = await db
         .select({ clientId: posts.clientId, n: count() })
         .from(posts)
-        .where(eq(posts.status, "AWAITING_APPROVAL"))
+        .where(inArray(posts.status, ["AWAITING_APPROVAL", "INTERNAL_REVIEW"]))
         .groupBy(posts.clientId);
       const open = await db
         .select({ clientId: tasks.clientId, n: count() })
@@ -121,13 +121,35 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
     wrap(async (req, res) => {
       const id = String(req.params.id);
       if (!isUuid(id)) throw new HttpError(404, "Not found");
+      const t = (n: number) => z.string().trim().max(n).nullish();
+      const profileSchema = z
+        .object({
+          contactName: t(120), email: t(200), phone: t(60), website: t(300), industry: t(120), address: t(300),
+          services: z.array(z.string().trim().min(1).max(60)).max(20).nullish(),
+          monthlyFee: z.number().min(0).max(1e9).nullish(),
+          contractStart: isoDate.nullish(), contractEnd: isoDate.nullish(),
+          notes: t(4000),
+        })
+        .strict();
       const parsed = z
-        .object({ name: z.string().trim().min(1).max(120), status: z.enum(["ACTIVE", "PAUSED", "ARCHIVED"]) })
+        .object({ name: z.string().trim().min(1).max(120), status: z.enum(["ACTIVE", "ONBOARDING", "PAUSED", "ARCHIVED"]), profile: profileSchema })
         .partial()
         .strict()
         .safeParse(req.body);
       if (!parsed.success || Object.keys(parsed.data).length === 0) throw new HttpError(400, "Invalid input");
-      const [row] = await db.update(clients).set(parsed.data).where(eq(clients.id, id)).returning();
+      const { profile, ...rest } = parsed.data;
+      const set: Record<string, unknown> = { ...rest };
+      if (profile) {
+        const [cur] = await db.select({ profile: clients.profile }).from(clients).where(eq(clients.id, id)).limit(1);
+        if (!cur) throw new HttpError(404, "Not found");
+        const merged: Record<string, unknown> = { ...(cur.profile as Record<string, unknown>) };
+        for (const [k, v] of Object.entries(profile)) {
+          if (v === null || v === "" || (Array.isArray(v) && !v.length)) delete merged[k];
+          else merged[k] = v;
+        }
+        set.profile = merged;
+      }
+      const [row] = await db.update(clients).set(set).where(eq(clients.id, id)).returning();
       if (!row) throw new HttpError(404, "Not found");
       await audit(db, { actorUserId: req.user!.id, clientId: id, action: "client.update", entity: "client", entityId: id });
       res.json(row);
@@ -155,6 +177,7 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
     wrap(async (req, res) => {
       // Every client-owned table cascades from clients, so this removes all demo content.
       const removed = await db.delete(clients).where(eq(clients.isDemo, true)).returning({ id: clients.id });
+      await db.delete(records).where(eq(records.isDemo, true)); // agency-wide sample rows (leads, resources, ...)
       await audit(db, { actorUserId: req.user!.id, action: "demo.remove" });
       res.json({ removed: removed.length });
     }),

@@ -7,7 +7,7 @@ import { useAuth } from "../auth";
 import { ErrorNote, Loading } from "../components/ui";
 import { fmtShort, plural, todayIso } from "../format";
 import { useLoad } from "../hooks";
-import { AdminClient, AuditRow, MasterPost, MasterTask, STATUS_LABEL } from "../types";
+import { AdminClient, AuditRow, MasterPost, MasterTask, STAGES, STATUS_LABEL, stageOf } from "../types";
 import { monthGrid } from "./Calendar";
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -81,6 +81,7 @@ export function DashboardPage() {
   const posts = useLoad<MasterPost[]>("/api/admin/posts");
   const tasks = useLoad<MasterTask[]>("/api/admin/tasks");
   const audit = useLoad<AuditRow[]>("/api/admin/audit");
+  const recAttention = useLoad<{ overdue: { label: string; title: string; clientName: string | null; to: string }[] }>("/api/admin/records/attention");
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   const [tickError, setTickError] = useState<string | null>(null);
 
@@ -94,14 +95,14 @@ export function DashboardPage() {
   const open = tasks.data.filter((t) => !t.done && !ticked.has(t.id));
   const overdue = open.filter((t) => t.dueDate && t.dueDate < today);
   const focus = open.filter((t) => t.dueDate && t.dueDate <= today).sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
-  const upcoming = posts.data.filter((p) => p.publishDate >= today && p.status !== "POSTED").slice(0, 5);
-  const awaiting = posts.data.filter((p) => p.status === "AWAITING_APPROVAL");
-  const drafts = posts.data.filter((p) => p.status === "DRAFT");
+  const upcoming = posts.data.filter((p) => p.publishDate >= today && stageOf(p.status) !== "PUBLISHED" && stageOf(p.status) !== "ARCHIVED").slice(0, 5);
+  const awaiting = posts.data.filter((p) => stageOf(p.status) === "INTERNAL_REVIEW");
+  const drafts = posts.data.filter((p) => stageOf(p.status) === "IDEA");
   const clientName = new Map(clients.data.map((c) => [c.id, c.name]));
 
-  const statusCounts = (Object.keys(STATUS_LABEL) as (keyof typeof STATUS_LABEL)[]).map((s) => ({
+  const statusCounts = STAGES.map((s) => ({
     label: STATUS_LABEL[s],
-    n: posts.data!.filter((p) => p.status === s).length,
+    n: posts.data!.filter((p) => stageOf(p.status) === s).length,
   }));
   const maxCount = Math.max(1, ...statusCounts.map((s) => s.n));
 
@@ -116,9 +117,10 @@ export function DashboardPage() {
   };
 
   const attention: { key: string; text: string; to: string }[] = [];
-  if (awaiting.length) attention.push({ key: "a", text: `${awaiting.length} ${plural(awaiting.length, "post is", "posts are")} waiting for approval`, to: "/admin/calendar?status=AWAITING_APPROVAL" });
+  for (const o of recAttention.data?.overdue.slice(0, 5) ?? []) attention.push({ key: "r" + o.to, text: `${o.title}: ${o.label}${o.clientName ? ` (${o.clientName})` : ""}`, to: o.to });
+  if (awaiting.length) attention.push({ key: "a", text: `${awaiting.length} ${plural(awaiting.length, "post is", "posts are")} in internal review`, to: "/admin/calendar?status=INTERNAL_REVIEW" });
   if (overdue.length) attention.push({ key: "o", text: `${overdue.length} overdue ${plural(overdue.length, "task", "tasks")}`, to: "/admin/tasks" });
-  if (drafts.length) attention.push({ key: "d", text: `${drafts.length} ${plural(drafts.length, "draft post", "draft posts")} not yet sent for approval`, to: "/admin/calendar?status=DRAFT" });
+  if (drafts.length) attention.push({ key: "d", text: `${drafts.length} content ${plural(drafts.length, "idea", "ideas")} not yet in production`, to: "/admin/social" });
 
   const activity = (audit.data ?? []).filter((a) => a.action !== "auth.login").slice(0, 5);
 

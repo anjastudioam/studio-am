@@ -11,6 +11,7 @@ import { HttpError } from "./http";
 import type { Mailer } from "./mail/mailer";
 import { originCheck, sessionLoader } from "./middleware/auth";
 import { adminRoutes } from "./routes/admin";
+import { recordRoutes } from "./routes/records";
 import { authRoutes } from "./routes/auth";
 import { portalRoutes } from "./routes/portal";
 
@@ -60,7 +61,7 @@ export function createApp(deps: AppDeps) {
   app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
   const api = express.Router();
-  if (limitsOn) api.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }));
+  if (limitsOn) api.use(rateLimit({ windowMs: 60_000, limit: 900, standardHeaders: true, legacyHeaders: false }));
   api.use((_req, res, next) => {
     res.setHeader("Cache-Control", "no-store");
     next();
@@ -68,6 +69,7 @@ export function createApp(deps: AppDeps) {
   api.use(originCheck(cfg.BASE_URL));
   api.use(sessionLoader(auth, production));
   api.use("/auth", authRoutes({ db, auth, production, rateLimit: limitsOn }));
+  api.use("/admin/records", recordRoutes({ db }));
   api.use("/admin", adminRoutes({ db, auth }));
   api.use("/c/:slug", portalRoutes({ db }));
   api.use((_req, _res, next) => next(new HttpError(404, "Not found")));

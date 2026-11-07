@@ -22,6 +22,20 @@
       "when": 1794079740763,
       "tag": "0002_demo_flag",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794100000000,
+      "tag": "0003_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794110000000,
+      "tag": "0004_client_profile",
+      "breakpoints": true
     }
   ]
 }

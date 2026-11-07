@@ -2,11 +2,13 @@ export type Role = "ADMIN" | "CLIENT";
 export type User = { id: string; email: string; name: string; role: Role; clientId: string | null };
 export type MeClient = { id: string; name: string; slug: string };
 
-export type PostStatus = "DRAFT" | "AWAITING_APPROVAL" | "CHANGES_REQUESTED" | "APPROVED" | "SCHEDULED" | "POSTED";
+export type PostStatus = "IDEA" | "IN_PRODUCTION" | "INTERNAL_REVIEW" | "READY" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED" | "DRAFT" | "AWAITING_APPROVAL" | "CHANGES_REQUESTED" | "APPROVED" | "POSTED";
 export type Post = {
   id: string;
   publishDate: string;
   platform: string;
+  title?: string | null;
+  campaign?: string | null;
   pillar: string | null;
   format: string | null;
   caption: string;
@@ -33,7 +35,10 @@ export type Home = {
   nextPost: Post | null;
 };
 
-export type AdminClient = { id: string; name: string; slug: string; status: "ACTIVE" | "PAUSED" | "ARCHIVED"; awaitingApproval: number; openTasks: number };
+export type ClientProfile = { contactName?: string; email?: string; phone?: string; website?: string; industry?: string; address?: string; services?: string[]; monthlyFee?: number; contractStart?: string; contractEnd?: string; notes?: string };
+export type ClientStatus = "ACTIVE" | "ONBOARDING" | "PAUSED" | "ARCHIVED";
+export const CLIENT_STATUS: Record<ClientStatus, string> = { ONBOARDING: "Onboarding", ACTIVE: "Active", PAUSED: "Paused", ARCHIVED: "Archived" };
+export type AdminClient = { id: string; name: string; slug: string; status: ClientStatus; isDemo?: boolean; profile?: ClientProfile; awaitingApproval: number; openTasks: number };
 export type AdminUser = { id: string; email: string; name: string; role: Role; active: boolean; lastLoginAt: string | null };
 export type AuditRow = { id: string; actorUserId: string | null; clientId: string | null; action: string; entity: string | null; createdAt: string };
 
@@ -55,14 +60,24 @@ export const FOLDERS: { value: string; label: string }[] = [
   { value: "SOCIAL_STRATEGY", label: "Social strategy" },
   { value: "SHOOT_PLANNING", label: "Shoot planning" },
 ];
+/** The agency's internal content workflow, in order. */
+export const STAGES = ["IDEA", "IN_PRODUCTION", "INTERNAL_REVIEW", "READY", "SCHEDULED", "PUBLISHED", "ARCHIVED"] as const;
 export const STATUS_LABEL: Record<PostStatus, string> = {
-  DRAFT: "Draft",
-  AWAITING_APPROVAL: "Awaiting approval",
-  CHANGES_REQUESTED: "Changes requested",
-  APPROVED: "Approved",
+  IDEA: "Idea",
+  IN_PRODUCTION: "In production",
+  INTERNAL_REVIEW: "Internal review",
+  READY: "Ready",
   SCHEDULED: "Scheduled",
-  POSTED: "Posted",
+  PUBLISHED: "Published",
+  ARCHIVED: "Archived",
+  // Older posts keep working and are shown under the nearest stage.
+  DRAFT: "Idea",
+  AWAITING_APPROVAL: "Internal review",
+  CHANGES_REQUESTED: "In production",
+  APPROVED: "Ready",
+  POSTED: "Published",
 };
+export const stageOf = (s: PostStatus): PostStatus => (({ DRAFT: "IDEA", AWAITING_APPROVAL: "INTERNAL_REVIEW", CHANGES_REQUESTED: "IN_PRODUCTION", APPROVED: "READY", POSTED: "PUBLISHED" }) as Partial<Record<PostStatus, PostStatus>>)[s] ?? s;
 export const linkLabel = (v: string) => LINK_TYPES.find((t) => t.value === v)?.label ?? v;
 export const folderLabel = (v: string) => FOLDERS.find((t) => t.value === v)?.label ?? v;
 

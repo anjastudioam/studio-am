@@ -21,7 +21,7 @@ const linkTypes = [
   "SHOT_LIST",
 ] as const;
 const folders = ["AGREEMENTS", "INVOICES", "REPORTS", "SOCIAL_STRATEGY", "SHOOT_PLANNING"] as const;
-const postStatuses = ["DRAFT", "AWAITING_APPROVAL", "CHANGES_REQUESTED", "APPROVED", "SCHEDULED", "POSTED"] as const;
+const postStatuses = ["DRAFT", "AWAITING_APPROVAL", "CHANGES_REQUESTED", "APPROVED", "SCHEDULED", "POSTED", "IDEA", "IN_PRODUCTION", "INTERNAL_REVIEW", "READY", "PUBLISHED", "ARCHIVED"] as const;
 
 const text = (max: number) => z.string().trim().max(max);
 const title = z.string().trim().min(1).max(200);
@@ -47,6 +47,8 @@ const RESOURCES: Record<ResourceName, ResourceConfig> = {
       .object({
         publishDate: isoDate,
         platform: z.string().trim().min(1).max(60),
+        title: text(200).optional(),
+        campaign: text(120).optional(),
         pillar: text(80).optional(),
         format: text(60).optional(),
         caption: text(5000).optional(),
@@ -59,6 +61,8 @@ const RESOURCES: Record<ResourceName, ResourceConfig> = {
       .object({
         publishDate: isoDate,
         platform: z.string().trim().min(1).max(60),
+        title: text(200).nullable(),
+        campaign: text(120).nullable(),
         pillar: text(80).nullable(),
         format: text(60).nullable(),
         caption: text(5000),
@@ -126,7 +130,7 @@ export function portalRoutes(opts: { db: Db }) {
         folders: folderCounts,
         openTasks: tasks.filter((t) => !t.done).slice(0, 8),
         notices: notices.slice(0, 5),
-        awaitingApproval: visiblePosts.filter((p) => p.status === "AWAITING_APPROVAL").length,
+        awaitingApproval: visiblePosts.filter((p) => p.status === "AWAITING_APPROVAL" || p.status === "INTERNAL_REVIEW").length,
         nextPost: visiblePosts.find((p) => p.publishDate >= today && ["APPROVED", "SCHEDULED"].includes(p.status)) ?? null,
       });
     }),

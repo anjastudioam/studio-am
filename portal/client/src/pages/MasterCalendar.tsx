@@ -10,6 +10,35 @@ import { MONTH_NAMES, WEEKDAYS, monthGrid } from "./Calendar";
 // One colour per client. Chosen to stay distinct from each other and from the brand olive.
 const CLIENT_COLOURS = ["#2f6b9a", "#b5542c", "#6b4c9a", "#2f8a6b", "#c2802b", "#9a2f5a", "#4c6b2f", "#2f8a8a", "#7a5c3a", "#5a5a8a"];
 
+type AgendaItem = { kind: string; label: string; id: string; title: string; date: string; clientName: string | null; to: string; overdue: boolean };
+
+function Agenda({ y, m, clientName }: { y: number; m: number; clientName: string }) {
+  const last = new Date(y, m + 1, 0).getDate();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const feed = useLoad<AgendaItem[]>(`/api/admin/records/agenda?from=${y}-${pad(m + 1)}-01&to=${y}-${pad(m + 1)}-${pad(last)}`);
+  const items = (feed.data ?? []).filter((i) => i.kind !== "post" && (!clientName || i.clientName === clientName));
+  return (
+    <section className="block agenda">
+      <h2>Also due in {MONTH_NAMES[m]}</h2>
+      {feed.loading ? <Loading /> : items.length === 0 ? (
+        <p className="muted">No project deadlines, invoices, meetings, renewals or to-dos fall in this month.</p>
+      ) : (
+        <ul className="rows plain agenda-list">
+          {items.map((i) => (
+            <li key={i.kind + i.id}>
+              <Link to={i.to}>
+                <strong>{i.title}</strong>
+                <span className="muted small">{[i.label, i.clientName].filter(Boolean).join(" · ")}</span>
+              </Link>
+              <span className={i.overdue ? "late" : "muted"}>{fmtShort(i.date)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function MasterCalendarPage() {
   const posts = useLoad<MasterPost[]>("/api/admin/posts");
   const clients = useLoad<AdminClient[]>("/api/admin/clients");
@@ -210,6 +239,8 @@ export function MasterCalendarPage() {
           ))}
         </ul>
       )}
+
+      <Agenda y={cursor.y} m={cursor.m} clientName={clients.data.find((c) => c.id === clientFilter)?.name ?? ""} />
 
       {open ? (
         <Drawer title={`${open.clientName}, ${fmtShort(open.publishDate)}`} onClose={() => setOpenId(null)}>

@@ -33,7 +33,7 @@ export function ClientsPage() {
         title="Clients"
         lead={
           waiting > 0
-            ? `${waiting} ${plural(waiting, "post is", "posts are")} waiting for approval across ${needing.length} ${plural(needing.length, "client", "clients")}.`
+            ? `${waiting} ${plural(waiting, "post is", "posts are")} in internal review across ${needing.length} ${plural(needing.length, "client", "clients")}.`
             : active.length > 0
               ? "No approvals are waiting on clients."
               : "Add your first client to get started."
@@ -64,7 +64,7 @@ export function ClientsPage() {
             <thead>
               <tr>
                 <th>Client</th>
-                <th>Awaiting approval</th>
+                <th>In review</th>
                 <th>Open to-dos</th>
                 <th>Status</th>
                 <th>
@@ -80,7 +80,7 @@ export function ClientsPage() {
                       {c.name}
                     </Link>
                   </td>
-                  <td data-label="Awaiting approval">{c.awaitingApproval > 0 ? <strong className="attn">{c.awaitingApproval}</strong> : <span className="muted">None</span>}</td>
+                  <td data-label="In review">{c.awaitingApproval > 0 ? <strong className="attn">{c.awaitingApproval}</strong> : <span className="muted">None</span>}</td>
                   <td data-label="Open to-dos">{c.openTasks > 0 ? c.openTasks : <span className="muted">None</span>}</td>
                   <td data-label="Status">{c.status === "ACTIVE" ? "Active" : c.status === "PAUSED" ? "Paused" : "Archived"}</td>
                   <td>

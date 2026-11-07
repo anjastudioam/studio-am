@@ -49,31 +49,31 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { to: "/admin", label: "Dashboard", icon: <LayoutDashboard {...ICON} />, end: true },
       { to: "/admin/clients", label: "Client Directory", icon: <Users {...ICON} />, also: "/c/" },
-      { to: "/admin/projects", label: "Projects", icon: <FolderKanban {...ICON} />, soon: true },
+      { to: "/admin/projects", label: "Projects", icon: <FolderKanban {...ICON} /> },
       { to: "/admin/tasks", label: "Task Manager", icon: <ListChecks {...ICON} /> },
       { to: "/admin/calendar", label: "Calendar", icon: <CalendarDays {...ICON} /> },
-      { to: "/admin/ideas", label: "Idea Bank", icon: <Lightbulb {...ICON} />, soon: true },
+      { to: "/admin/ideas", label: "Idea Bank", icon: <Lightbulb {...ICON} /> },
     ],
   },
   {
-    group: "Client operations",
+    group: "Client work",
     items: [
-      { to: "/admin/brand", label: "Brand Management", icon: <Palette {...ICON} />, soon: true },
-      { to: "/admin/social", label: "Social Media", icon: <Share2 {...ICON} />, soon: true },
-      { to: "/admin/websites", label: "Website Management", icon: <Globe {...ICON} />, soon: true },
-      { to: "/admin/audits", label: "Audits & Reporting", icon: <ClipboardCheck {...ICON} />, soon: true },
-      { to: "/admin/meetings", label: "Meetings & Notes", icon: <NotebookPen {...ICON} />, soon: true },
+      { to: "/admin/brand", label: "Brand Management", icon: <Palette {...ICON} /> },
+      { to: "/admin/social", label: "Social Media", icon: <Share2 {...ICON} /> },
+      { to: "/admin/websites", label: "Website Management", icon: <Globe {...ICON} /> },
+      { to: "/admin/audits", label: "Audits & Reporting", icon: <ClipboardCheck {...ICON} /> },
+      { to: "/admin/meetings", label: "Meetings & Notes", icon: <NotebookPen {...ICON} /> },
     ],
   },
   {
-    group: "Business management",
+    group: "Business",
     items: [
-      { to: "/admin/files", label: "File Repository", icon: <FolderOpen {...ICON} />, soon: true },
-      { to: "/admin/finance", label: "Finance & Invoices", icon: <Wallet {...ICON} />, soon: true },
-      { to: "/admin/leads", label: "Leads & Prospects", icon: <Target {...ICON} />, soon: true },
-      { to: "/admin/resources", label: "Resource Library", icon: <Library {...ICON} />, soon: true },
-      { to: "/admin/notices", label: "Notice Board", icon: <Megaphone {...ICON} />, soon: true },
-      { to: "/admin/links", label: "Link Stack", icon: <Link2 {...ICON} />, soon: true },
+      { to: "/admin/files", label: "File Repository", icon: <FolderOpen {...ICON} /> },
+      { to: "/admin/finance", label: "Finance & Invoices", icon: <Wallet {...ICON} /> },
+      { to: "/admin/leads", label: "Leads & Prospects", icon: <Target {...ICON} /> },
+      { to: "/admin/resources", label: "Resource Library", icon: <Library {...ICON} /> },
+      { to: "/admin/notices", label: "Notice Board", icon: <Megaphone {...ICON} /> },
+      { to: "/admin/links", label: "Link Stack", icon: <Link2 {...ICON} /> },
       { to: "/admin/settings", label: "Settings", icon: <Settings {...ICON} /> },
     ],
   },
@@ -81,43 +81,53 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 function SideNav({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
-  const all = NAV.flatMap((g) => g.items);
-  const live = all.filter((i) => !i.soon);
-  const soon = all.filter((i) => i.soon);
   const isActive = (i: NavItem) =>
     i.end ? pathname === i.to || pathname === i.to + "/" : pathname.startsWith(i.to) || (!!i.also && pathname.startsWith(i.also));
-  const soonActive = soon.some(isActive);
-  const [more, setMore] = useState(false);
-  const show = more || soonActive;
+  const settings = NAV.flatMap((g) => g.items).find((i) => i.to === "/admin/settings")!;
+  const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => i.to !== "/admin/settings") }));
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("sam.nav.groups") ?? "{\"Workspace\":true}");
+    } catch {
+      return { Workspace: true };
+    }
+  });
+  const toggle = (g: string, now: boolean) => {
+    const next = { ...openGroups, [g]: !now };
+    setOpenGroups(next);
+    try {
+      localStorage.setItem("sam.nav.groups", JSON.stringify(next));
+    } catch {
+      /* not persisted in private mode */
+    }
+  };
   const link = (i: NavItem) => {
     const active = isActive(i);
     return (
-      <NavLink
-        key={i.to}
-        to={i.to}
-        end={i.end}
-        onClick={onNavigate}
-        data-label={i.label}
-        aria-current={active ? "page" : undefined}
-        className={`navlink ${active ? "active" : ""} ${i.soon ? "soon" : ""}`}
-      >
+      <NavLink key={i.to} to={i.to} end={i.end} onClick={onNavigate} data-label={i.label} aria-current={active ? "page" : undefined} className={`navlink ${active ? "active" : ""}`}>
         {i.icon}
         <span className="nav-label">{i.label}</span>
       </NavLink>
     );
   };
-  const settings = live.filter((i) => i.to === "/admin/settings");
   return (
     <nav className="sidenav" aria-label="Main">
-      {live.filter((i) => i.to !== "/admin/settings").map(link)}
-      <button type="button" className="navlink more-toggle" aria-expanded={show} onClick={() => setMore(!show)} data-label="Coming soon">
-        <ChevronDown {...ICON} className={show ? "chev open" : "chev"} />
-        <span className="nav-label">Coming soon</span>
-        <span className="soon-tag">{soon.length}</span>
-      </button>
-      {show ? <div className="soon-list">{soon.map(link)}</div> : null}
+      {groups.map((g) => {
+        const hasActive = g.items.some(isActive);
+        const open = hasActive || !!openGroups[g.group];
+        return (
+          <div key={g.group} className="nav-section">
+            <button type="button" className="nav-group-btn" aria-expanded={open} onClick={() => toggle(g.group, open)}>
+              <span className="nav-label">{g.group}</span>
+              <ChevronDown size={16} strokeWidth={1.75} className={open ? "chev open" : "chev"} aria-hidden="true" />
+            </button>
+            {open ? g.items.map(link) : null}
+            {!open && hasActive ? null : null}
+          </div>
+        );
+      })}
       <div className="nav-spacer" />
-      {settings.map(link)}
+      {link(settings)}
     </nav>
   );
 }
@@ -278,13 +288,20 @@ export function PortalShell() {
 
   const tabs = [
     { to: base, label: "Overview", end: true },
+    { to: `${base}/projects`, label: "Projects" },
     { to: `${base}/calendar`, label: "Calendar" },
-    { to: `${base}/files`, label: "Files" },
-    { to: `${base}/links`, label: "Links" },
+    { to: `${base}/social`, label: "Social" },
+    { to: `${base}/brand`, label: "Brand" },
+    { to: `${base}/websites`, label: "Websites" },
+    { to: `${base}/audits`, label: "Audits" },
+    { to: `${base}/meetings`, label: "Meetings" },
     { to: `${base}/tasks`, label: "To-do" },
+    { to: `${base}/files`, label: "Files" },
+    { to: `${base}/finance`, label: "Finance" },
     { to: `${base}/ideas`, label: "Ideas" },
-    { to: `${base}/moodboard`, label: "Moodboard" },
+    { to: `${base}/links`, label: "Links" },
     { to: `${base}/notices`, label: "Notices" },
+    { to: `${base}/moodboard`, label: "Moodboard" },
   ];
 
   return (

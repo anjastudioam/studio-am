@@ -7,18 +7,33 @@ import { AdminClientPage } from "./pages/AdminClient";
 import { ClientsPage } from "./pages/AdminDashboard";
 import { DashboardPage } from "./pages/Dashboard";
 import { CalendarPage } from "./pages/Calendar";
-import { FilesPage } from "./pages/Files";
 import { HomePage } from "./pages/Home";
-import { IdeasPage } from "./pages/Ideas";
-import { LinksPage } from "./pages/Links";
 import { LoginPage, VerifyPage } from "./pages/Login";
 import { MasterCalendarPage } from "./pages/MasterCalendar";
 import { MoodboardPage } from "./pages/Moodboard";
-import { NoticesPage } from "./pages/Notices";
-import { PlannedPage } from "./pages/Planned";
+import { ClientRecordsPage, RecordsPage } from "./components/Records";
+import { SocialHub } from "./pages/Social";
+import { useParams } from "react-router-dom";
 import { SettingsPage } from "./pages/Settings";
 import { TaskManagerPage } from "./pages/TaskManager";
 import { TasksPage } from "./pages/Tasks";
+
+const ADMIN_MODULES: [string, string][] = [
+  ["projects", "projects"], ["ideas", "ideas"], ["brand", "brand"], ["websites", "websites"], ["audits", "audits"], ["meetings", "meetings"],
+  ["files", "files"], ["finance", "finance"], ["leads", "leads"], ["resources", "resources"], ["notices", "notices"], ["links", "links"],
+];
+const CLIENT_MODULES: [string, string][] = [
+  ["projects", "projects"], ["brand", "brand"], ["websites", "websites"], ["audits", "audits"], ["meetings", "meetings"],
+  ["files", "files"], ["finance", "finance"], ["ideas", "ideas"], ["links", "links"], ["notices", "notices"],
+];
+function ClientModule({ module }: { module: string }) {
+  const { slug = "" } = useParams();
+  return <ClientRecordsPage key={slug + module} module={module} slug={slug} />;
+}
+function ClientSocial() {
+  const { slug = "" } = useParams();
+  return <SocialHub key={slug} clientSlug={slug} />;
+}
 
 function Start() {
   const { user, client, loading } = useAuth();
@@ -61,7 +76,11 @@ export function App() {
           <Route path="tasks" element={<TaskManagerPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="team" element={<Navigate to="/admin/settings" replace />} />
-          <Route path="*" element={<PlannedPage />} />
+          {ADMIN_MODULES.map(([path, mod]) => (
+            <Route key={path} path={path} element={<RecordsPage module={mod} />} />
+          ))}
+          <Route path="social" element={<SocialHub />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
         <Route
           path="/c/:slug"
@@ -73,12 +92,12 @@ export function App() {
         >
           <Route index element={<HomePage />} />
           <Route path="calendar" element={<CalendarPage />} />
-          <Route path="files" element={<FilesPage />} />
-          <Route path="links" element={<LinksPage />} />
           <Route path="tasks" element={<TasksPage />} />
-          <Route path="ideas" element={<IdeasPage />} />
           <Route path="moodboard" element={<MoodboardPage />} />
-          <Route path="notices" element={<NoticesPage />} />
+          <Route path="social" element={<ClientSocial />} />
+          {CLIENT_MODULES.map(([path, mod]) => (
+            <Route key={path} path={path} element={<ClientModule module={mod} />} />
+          ))}
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

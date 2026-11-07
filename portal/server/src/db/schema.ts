@@ -4,6 +4,8 @@ import {
   date,
   index,
   integer,
+  jsonb,
+  bigint,
   pgEnum,
   pgTable,
   text,
@@ -14,7 +16,7 @@ import {
 
 /* ---------- Enums ---------- */
 export const roleEnum = pgEnum("role", ["ADMIN", "CLIENT"]);
-export const clientStatusEnum = pgEnum("client_status", ["ACTIVE", "PAUSED", "ARCHIVED"]);
+export const clientStatusEnum = pgEnum("client_status", ["ACTIVE", "PAUSED", "ARCHIVED", "ONBOARDING"]);
 export const linkTypeEnum = pgEnum("link_type", [
   "SOCIAL_PROFILES",
   "GOOGLE_DRIVE",
@@ -40,6 +42,13 @@ export const postStatusEnum = pgEnum("post_status", [
   "APPROVED",
   "SCHEDULED",
   "POSTED",
+  // Internal 7-stage workflow (the four above that are not listed here are kept for old rows)
+  "IDEA",
+  "IN_PRODUCTION",
+  "INTERNAL_REVIEW",
+  "READY",
+  "PUBLISHED",
+  "ARCHIVED",
 ]);
 export const taskOwnerEnum = pgEnum("task_owner", ["AGENCY", "CLIENT"]);
 
@@ -55,6 +64,7 @@ export const clients = pgTable(
     slug: text("slug").notNull(),
     status: clientStatusEnum("status").notNull().default("ACTIVE"),
     isDemo: boolean("is_demo").notNull().default(false),
+    profile: jsonb("profile").notNull().default(sql`'{}'::jsonb`),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clients_slug_uq").on(t.slug)],
@@ -151,6 +161,8 @@ export const posts = pgTable(
     assetUrl: text("asset_url"),
     status: postStatusEnum("status").notNull().default("DRAFT"),
     internalNote: text("internal_note"),
+    title: text("title"),
+    campaign: text("campaign"),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -209,6 +221,8 @@ export const tasks = pgTable(
     title: text("title").notNull(),
     dueDate: date("due_date"),
     owner: taskOwnerEnum("owner").notNull().default("AGENCY"),
+    priority: text("priority").notNull().default("NORMAL"),
+    notes: text("notes"),
     done: boolean("done").notNull().default(false),
     doneAt: timestamp("done_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -243,4 +257,24 @@ export const auditLog = pgTable(
     createdAt: createdAt(),
   },
   (t) => [index("audit_client_idx").on(t.clientId, t.createdAt)],
+);
+
+/* ---------- Agency records: one table for the module engine (projects, finance, leads, ...) ---------- */
+export const records = pgTable(
+  "records",
+  {
+    id: id(),
+    module: text("module").notNull(),
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    status: text("status"),
+    date: date("date"),
+    amountCents: bigint("amount_cents", { mode: "number" }),
+    data: jsonb("data").notNull().default(sql`'{}'::jsonb`),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    isDemo: boolean("is_demo").notNull().default(false),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("records_module_idx").on(t.module, t.date), index("records_client_idx").on(t.clientId, t.module)],
 );

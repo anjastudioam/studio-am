@@ -4,7 +4,7 @@
  */
 import { eq } from "drizzle-orm";
 import type { Db } from "./index";
-import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, tasks } from "./schema";
+import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, records, tasks } from "./schema";
 
 const iso = (offsetDays: number) => {
   const d = new Date();
@@ -43,12 +43,12 @@ export async function seedDemo(db: Db): Promise<boolean> {
     clientId: id, publishDate: iso(n), platform, format, pillar, caption, status, internalNote,
   });
   await db.insert(posts).values([
-    mk(-4, "Instagram", "Reel", "Behind the scenes", "5am at the ovens. The smell of fresh sourdough is how every day starts here.", "POSTED"),
-    mk(1, "Instagram", "Carousel", "Product", "Meet the festive range. Swipe to see what's baking this December.", "AWAITING_APPROVAL", "Waiting on final product photos"),
-    mk(3, "Facebook", "Single image", "Community", "Thank you to everyone who joined our Saturday tasting. Here's what you loved most.", "AWAITING_APPROVAL"),
-    mk(6, "Instagram", "Story", "Offer", "This week only: buy two loaves, get a free rusk pack.", "APPROVED"),
-    mk(9, "Instagram", "Reel", "Behind the scenes", "How our croissant dough gets its layers.", "CHANGES_REQUESTED"),
-    mk(12, "Facebook", "Single image", "Product", "Gift boxes are now open for orders.", "DRAFT", "Draft only, check pricing first"),
+    mk(-4, "Instagram", "Reel", "Behind the scenes", "5am at the ovens. The smell of fresh sourdough is how every day starts here.", "PUBLISHED"),
+    mk(1, "Instagram", "Carousel", "Product", "Meet the festive range. Swipe to see what's baking this December.", "INTERNAL_REVIEW", "Waiting on final product photos"),
+    mk(3, "Facebook", "Single image", "Community", "Thank you to everyone who joined our Saturday tasting. Here's what you loved most.", "INTERNAL_REVIEW"),
+    mk(6, "Instagram", "Story", "Offer", "This week only: buy two loaves, get a free rusk pack.", "READY"),
+    mk(9, "Instagram", "Reel", "Behind the scenes", "How our croissant dough gets its layers.", "IN_PRODUCTION"),
+    mk(12, "Facebook", "Single image", "Product", "Gift boxes are now open for orders.", "IDEA", "Draft only, check pricing first"),
   ]);
   await db.insert(ideas).values([
     { clientId: id, title: "Meet the baker series", note: "Short intro video for each team member.", pillar: "Behind the scenes" },
@@ -71,9 +71,45 @@ export async function seedDemo(db: Db): Promise<boolean> {
   ]);
 
   await db.insert(posts).values({
-    clientId: outfit.id, publishDate: iso(2), platform: "Instagram", caption: "Summer range preview.", status: "AWAITING_APPROVAL",
+    clientId: outfit.id, publishDate: iso(2), platform: "Instagram", caption: "Summer range preview.", status: "INTERNAL_REVIEW",
   });
   await db.insert(notices).values({ clientId: outfit.id, title: "Welcome to your portal", body: "Everything for your project lives here.", pinned: true });
+
+  const R = (module: string, title: string, o: { client?: string; status?: string; date?: number; amount?: number; data?: Record<string, unknown> } = {}) => ({
+    module, title, clientId: o.client ?? null, status: o.status ?? null, date: o.date == null ? null : iso(o.date), amountCents: o.amount == null ? null : o.amount * 100, data: o.data ?? {}, isDemo: true,
+  });
+  const B = bakery.id;
+  const K = outfit.id;
+  await db.insert(records).values([
+    R("projects", "Brand refresh and new packaging", { client: B, status: "ACTIVE", date: 21, amount: 18500, data: { type: "Branding", priority: "High", description: "Refresh the logo, colours and packaging for the festive range.", deliverables: "Logo options\nColour palette\nPackaging mock-ups", milestones: "Concepts approved\nFinal files delivered" } }),
+    R("projects", "Website rebuild", { client: B, status: "PLANNING", date: 60, amount: 32000, data: { type: "Website", priority: "Normal" } }),
+    R("projects", "Summer campaign", { client: K, status: "ACTIVE", date: -3, amount: 12000, data: { type: "Marketing", priority: "Urgent" } }),
+    R("projects", "Social media setup", { client: K, status: "COMPLETED", date: -20, amount: 6500, data: { type: "Social media" } }),
+    R("ideas", "Meet the baker video series", { client: B, status: "CONSIDERING", data: { category: "Content", priority: "High", details: "Short intro video for each team member." } }),
+    R("ideas", "Monthly behind-the-scenes day", { status: "IDEA", data: { category: "Agency", priority: "Normal", details: "Film one client a month for a case study." } }),
+    R("brand", "Sunrise Bakery brand profile", { client: B, status: "IN_REVIEW", data: { positioning: "The neighbourhood bakery that still bakes at 5am.", audience: "Local families and office workers within 10 km.", personality: "Warm, proud, a little cheeky. Plain words, no jargon.", colours: "Golden #AEA114, Cream #F4F2D2, Walnut #6B6410", fonts: "Jost, Georgia", dos: "Show hands and flour.\nUse real staff.\nAvoid stock photos." } }),
+    R("accounts", "Sunrise Bakery Instagram", { client: B, status: "ACTIVE", data: { platform: "Instagram", username: "@sunrisebakery", url: "https://instagram.com/example", followers: 4820, strategy: "Daily stories, three reels a week, one carousel." } }),
+    R("accounts", "Sunrise Bakery Facebook", { client: B, status: "ACTIVE", data: { platform: "Facebook", username: "Sunrise Bakery", followers: 2150 } }),
+    R("captions", "Fresh out the oven", { client: B, data: { platform: "Instagram", category: "Promo", text: "Still warm. Come early, they go fast. Tag someone who needs a croissant today." } }),
+    R("hashtags", "Bakery basics", { client: B, data: { platform: "Instagram", category: "Bakery", tags: "#sourdough #freshbread #localbakery #capetownfood" } }),
+    R("websites", "sunrisebakery.example", { client: B, status: "LIVE", date: 40, amount: 3600, data: { url: "https://sunrisebakery.example", platform: "WordPress", registrar: "Domains Co", hosting: "Shared hosting", domainExpiry: iso(40), notes: "Contact form email needs checking." } }),
+    R("websites", "karoooutfitters.example", { client: K, status: "REDESIGN", date: -4, amount: 4200, data: { url: "https://karoooutfitters.example", platform: "Shopify" } }),
+    R("audits", "Social media audit, Q4", { client: B, status: "DELIVERED", date: -10, data: { auditType: "Social media", scoreStrategy: 6, scoreConsistency: 7, scoreQuality: 8, scoreEngagement: 5, scoreTechnical: 7, scoreConversion: 4, summary: "Strong visuals, weak calls to action.", strengths: "Consistent look.\nGood product photography.", weaknesses: "No posting rhythm.\nNo link in bio strategy.", opportunities: "Reels about the baking process.", recommendations: "Set a three-posts-a-week rhythm\nAdd a link-in-bio page\nStart a weekly reel" } }),
+    R("meetings", "Kick-off: festive range", { client: B, status: "HELD", date: -6, data: { meetingType: "Kick-off", attendees: "Thandi, Anja", notes: "Client wants a warmer, more handmade feel.", decisions: "Go with photography over illustration.", actionItems: "Send the shoot brief\nBook product shoot date\nShare moodboard" } }),
+    R("meetings", "Content review", { client: B, status: "SCHEDULED", date: 4, data: { meetingType: "Review", agenda: "November content plan." } }),
+    R("files", "Retainer agreement 2026", { client: B, data: { url: "https://drive.google.com/example-agreement", folder: "Agreements", version: "v2" }, date: -30 }),
+    R("finance", "November retainer", { client: B, status: "SENT", date: 9, amount: 8500, data: { docType: "Invoice", number: "INV-0012" } }),
+    R("finance", "October retainer", { client: B, status: "PAID", date: -20, amount: 8500, data: { docType: "Invoice", number: "INV-0011" } }),
+    R("finance", "Summer campaign deposit", { client: K, status: "SENT", date: -6, amount: 6000, data: { docType: "Invoice", number: "INV-0013" } }),
+    R("finance", "Website rebuild quote", { client: B, status: "DRAFT", amount: 32000, data: { docType: "Quote", number: "Q-0007" } }),
+    R("leads", "Fynbos Café", { status: "PROPOSAL", date: 3, amount: 15000, data: { contactName: "Lerato", email: "lerato@fynbos.example", interest: "Branding", source: "Referral", notes: "Wants a full rebrand before spring." } }),
+    R("leads", "Table Bay Fitness", { status: "MEETING", date: -2, amount: 9000, data: { contactName: "Marc", interest: "Social media", source: "Instagram" } }),
+    R("leads", "Greenline Plumbing", { status: "NEW", date: 1, amount: 4000, data: { interest: "Website", source: "Website" } }),
+    R("resources", "Client onboarding questionnaire", { data: { category: "Template", url: "https://docs.google.com/example-questionnaire", tags: ["onboarding", "client"], description: "Send this before the kick-off meeting." } }),
+    R("resources", "Social media proposal template", { data: { category: "Template", tags: ["proposal"], description: "Our standard scope and pricing layout." } }),
+    R("notices", "Monthly reports go out on the 5th", { data: { pinned: true, body: "Please finish client reports by the 3rd." } }),
+    R("links", "Brand asset library", { data: { url: "https://drive.google.com/example-assets", category: "Google Drive" } }),
+  ]);
 
   return true;
 }
