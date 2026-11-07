@@ -78,7 +78,7 @@ export function GlobalSearch() {
           setActive(0);
         }}
         onKeyDown={onKeyDown}
-        placeholder="Search clients, posts or to-dos"
+        placeholder={typeof window !== "undefined" && window.innerWidth < 900 ? "Search" : "Search clients, posts or to-dos"}
         aria-label="Search clients, posts or to-dos"
         autoComplete="off"
       />

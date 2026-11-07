@@ -1,7 +1,9 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   CalendarDays,
+  ChevronDown,
+  Plus,
   ClipboardCheck,
   FolderKanban,
   FolderOpen,
@@ -79,32 +81,84 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 function SideNav({ onNavigate }: { onNavigate: () => void }) {
   const { pathname } = useLocation();
+  const all = NAV.flatMap((g) => g.items);
+  const live = all.filter((i) => !i.soon);
+  const soon = all.filter((i) => i.soon);
+  const isActive = (i: NavItem) =>
+    i.end ? pathname === i.to || pathname === i.to + "/" : pathname.startsWith(i.to) || (!!i.also && pathname.startsWith(i.also));
+  const soonActive = soon.some(isActive);
+  const [more, setMore] = useState(false);
+  const show = more || soonActive;
+  const link = (i: NavItem) => {
+    const active = isActive(i);
+    return (
+      <NavLink
+        key={i.to}
+        to={i.to}
+        end={i.end}
+        onClick={onNavigate}
+        data-label={i.label}
+        aria-current={active ? "page" : undefined}
+        className={`navlink ${active ? "active" : ""} ${i.soon ? "soon" : ""}`}
+      >
+        {i.icon}
+        <span className="nav-label">{i.label}</span>
+      </NavLink>
+    );
+  };
+  const settings = live.filter((i) => i.to === "/admin/settings");
   return (
     <nav className="sidenav" aria-label="Main">
-      {NAV.map((g) => (
-        <div key={g.group} style={{ display: "contents" }}>
-          <div className="nav-group">{g.group}</div>
-          {g.items.map((i) => {
-            const active = i.end ? pathname === i.to || pathname === i.to + "/" : pathname.startsWith(i.to) || (!!i.also && pathname.startsWith(i.also));
-            return (
-              <NavLink
-                key={i.to}
-                to={i.to}
-                end={i.end}
-                onClick={onNavigate}
-                data-label={i.label}
-                aria-current={active ? "page" : undefined}
-                className={`navlink ${active ? "active" : ""} ${i.soon ? "soon" : ""}`}
-              >
-                {i.icon}
-                <span className="nav-label">{i.label}</span>
-                {i.soon ? <span className="soon-tag">Soon</span> : null}
-              </NavLink>
-            );
-          })}
-        </div>
-      ))}
+      {live.filter((i) => i.to !== "/admin/settings").map(link)}
+      <button type="button" className="navlink more-toggle" aria-expanded={show} onClick={() => setMore(!show)} data-label="Coming soon">
+        <ChevronDown {...ICON} className={show ? "chev open" : "chev"} />
+        <span className="nav-label">Coming soon</span>
+        <span className="soon-tag">{soon.length}</span>
+      </button>
+      {show ? <div className="soon-list">{soon.map(link)}</div> : null}
+      <div className="nav-spacer" />
+      {settings.map(link)}
     </nav>
+  );
+}
+
+function NewMenu() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
+  const items = [
+    { to: "/admin/clients?new=1", label: "Client", icon: <Users {...ICON} /> },
+    { to: "/admin/calendar?new=1", label: "Post", icon: <CalendarDays {...ICON} /> },
+    { to: "/admin/tasks", label: "To-do", icon: <ListChecks {...ICON} /> },
+  ];
+  return (
+    <div className="new-menu" ref={ref}>
+      <button type="button" className="btn btn-primary new-btn" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Plus size={18} strokeWidth={2} aria-hidden="true" />
+        <span className="new-label">New</span>
+      </button>
+      {open ? (
+        <div className="menu-pop glass" role="menu">
+          {items.map((i) => (
+            <NavLink key={i.label} to={i.to} role="menuitem" className="menu-item" onClick={() => setOpen(false)}>
+              {i.icon}
+              {i.label}
+            </NavLink>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -150,6 +204,7 @@ function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="top-spacer" />
           <GlobalSearch />
+          <NewMenu />
           <div className="who">
             <span className="avatar" aria-hidden="true">{initialsOf(user?.name ?? "")}</span>
             <span className="who-name">{user?.name}</span>

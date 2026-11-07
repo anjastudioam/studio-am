@@ -33,7 +33,7 @@ export function ClientsPage() {
         title="Clients"
         lead={
           waiting > 0
-            ? `${waiting} ${plural(waiting, "post is", "posts are")} waiting for client approval across ${needing.length} ${plural(needing.length, "client", "clients")}.`
+            ? `${waiting} ${plural(waiting, "post is", "posts are")} waiting for approval across ${needing.length} ${plural(needing.length, "client", "clients")}.`
             : active.length > 0
               ? "No approvals are waiting on clients."
               : "Add your first client to get started."
