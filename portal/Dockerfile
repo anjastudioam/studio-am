@@ -4,6 +4,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY server ./server
+COPY client ./client
+COPY vite.config.ts ./
 RUN npm run build
 
 # --- run ---
@@ -13,6 +15,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/server/dist ./server/dist
+COPY --from=build /app/client/dist ./client/dist
 COPY server/drizzle ./server/drizzle
 USER node
 EXPOSE 3000

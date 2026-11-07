@@ -2,7 +2,7 @@
 
 Private, branded workspace for each Studio AM client: link stack, file folders, to-do, notice board, content calendar with approvals, idea bank and moodboard. See `../docs/PRODUCT-SPEC.md` for the full spec.
 
-**Status:** backend complete and tested (auth, tenant isolation, all section APIs). Client interface is the next build step.
+**Status:** backend and interface built and tested. Next: demo deployment (Render + Neon, dummy data only), then the VPS for real clients.
 
 ## Stack
 Node 22 + TypeScript, Express 4, PostgreSQL, Drizzle ORM (SQL migrations), Zod validation, Resend for email. Ships as one Docker image.
@@ -16,6 +16,15 @@ cp .env.example .env        # then edit DATABASE_URL and ADMIN_EMAIL
 npm run dev                 # starts on http://localhost:3000, applies migrations, creates the admin
 ```
 With no `RESEND_API_KEY`, sign-in links are printed in the terminal instead of emailed.
+
+## Try it with dummy data
+```
+npm run seed:demo           # creates two FICTIONAL clients (refuses to run in production)
+npm run build && npm start  # serves the portal and the interface on one port
+```
+Sign in as your ADMIN_EMAIL, or as `thandi@sunrise-demo.test` (client) to see the client view. Sign-in links print in the terminal.
+
+For interface work run `npm run dev` and `npm run dev:client` together; the client dev server proxies /api to port 3000.
 
 ## Tests
 ```

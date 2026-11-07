@@ -20,3 +20,24 @@ Client interface (login screen, admin dashboard, client home and sections), emai
 2. Deploy demo to Render + Neon with dummy clients.
 3. Set up studio-am.co.za email sending (Resend DNS records at GoDaddy).
 4. Production move to the VPS before inviting real clients.
+
+## 7 Nov 2026: interface v0.1 built (client-facing version)
+Location: `portal/client/` (React + Vite), served by the same server as the API. 43 server tests pass; an automated click-through of the interface also passed (to-dos, approvals, admin actions, client blocked from other clients). Mobile layout checked at 390px wide.
+
+### Direction change (same day)
+The portal is now an INTERNAL tool for Studio AM only. Clients will not sign in. Needed: switch between clients, edit everything per client, and ONE master content calendar showing all clients together.
+What this means for the build:
+- Keep the per-client data model (every record belongs to a client).
+- Add a master calendar across all clients (colour-coded, filter by client) and a quick client switcher.
+- Client sign-in, approvals and client-side permissions stay in the code, switched off in the interface. Not deleted, because they're tested and may be wanted later.
+
+### Known limits
+- The logo is a small raster image and looks soft when enlarged. A vector (SVG) version is needed.
+- Moodboard uses image links, not uploads.
+- Email sign-in needs the Resend account and DNS records for studio-am.co.za.
+- Docker image not yet built or run (no Docker in the build environment).
+
+### Next steps
+1. Rework for internal use (master calendar, client switcher, hide client-facing controls).
+2. Demo deployment on Render + Neon (dummy data only).
+3. Move to the VPS before real client information goes in.
