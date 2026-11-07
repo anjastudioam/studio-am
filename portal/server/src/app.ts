@@ -66,7 +66,7 @@ export function createApp(deps: AppDeps) {
     next();
   });
   api.use(originCheck(cfg.BASE_URL));
-  api.use(sessionLoader(auth));
+  api.use(sessionLoader(auth, production));
   api.use("/auth", authRoutes({ db, auth, production, rateLimit: limitsOn }));
   api.use("/admin", adminRoutes({ db, auth }));
   api.use("/c/:slug", portalRoutes({ db }));

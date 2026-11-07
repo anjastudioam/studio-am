@@ -1,13 +1,16 @@
-import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, count, eq, gt, isNull, lt, ne, sql } from "drizzle-orm";
 import type { Config } from "../config";
 import type { Db } from "../db";
 import { loginTokens, sessions, users } from "../db/schema";
 import type { Mailer } from "../mail/mailer";
 import { loginEmail } from "../mail/templates";
+import { dummyHash, hashPassword, MIN_PASSWORD_LENGTH, verifyPassword } from "./password";
 import { hashToken, newToken } from "./tokens";
 
 export const LOGIN_TOKEN_MINUTES = 15;
-export const SESSION_DAYS = 14;
+export const SESSION_DAYS = 180;
+const MAX_FAILED_LOGINS = 8;
+const LOCK_MINUTES = 15;
 const MAX_LOGIN_EMAILS_PER_HOUR = 5;
 
 export type SessionUser = {
@@ -71,16 +74,80 @@ export class AuthService {
     const [user] = await this.db.select().from(users).where(eq(users.id, claimed[0].userId)).limit(1);
     if (!user || !user.active) return null;
 
+    const sessionToken = await this.startSession(user.id, userAgent);
+    return { sessionToken, user: toSessionUser(user) };
+  }
+
+  private async startSession(userId: string, userAgent?: string): Promise<string> {
     const sessionToken = newToken();
     await this.db.insert(sessions).values({
-      userId: user.id,
+      userId,
       tokenHash: hashToken(sessionToken),
       expiresAt: new Date(Date.now() + SESSION_DAYS * 86_400_000),
       userAgent: userAgent?.slice(0, 300),
     });
-    await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
+    await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, userId));
+    return sessionToken;
+  }
 
+  /**
+   * Email + password sign-in. Every failure returns null, so the caller answers identically
+   * whether the email is unknown, the password is wrong or the account is locked.
+   * After 8 wrong passwords in a row the account is locked for 15 minutes.
+   */
+  async loginWithPassword(
+    rawEmail: string,
+    password: string,
+    userAgent?: string,
+  ): Promise<{ sessionToken: string; user: SessionUser } | null> {
+    const email = normaliseEmail(rawEmail);
+    const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (!user || !user.active || !user.passwordHash) {
+      await verifyPassword(password, await dummyHash());
+      return null;
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) return null;
+
+    if (!(await verifyPassword(password, user.passwordHash))) {
+      const failed = user.failedLogins + 1;
+      const lock = failed >= MAX_FAILED_LOGINS;
+      await this.db
+        .update(users)
+        .set({ failedLogins: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null })
+        .where(eq(users.id, user.id));
+      return null;
+    }
+    await this.db.update(users).set({ failedLogins: 0, lockedUntil: null }).where(eq(users.id, user.id));
+    const sessionToken = await this.startSession(user.id, userAgent);
     return { sessionToken, user: toSessionUser(user) };
+  }
+
+  /** Sets a password and signs the user out everywhere else. `keepSessionToken` keeps the caller's own session. */
+  async setPassword(userId: string, password: string, keepSessionToken?: string): Promise<void> {
+    if (password.length < MIN_PASSWORD_LENGTH) throw new Error("Password too short");
+    await this.db
+      .update(users)
+      .set({ passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null })
+      .where(eq(users.id, userId));
+    await this.db
+      .delete(sessions)
+      .where(and(eq(sessions.userId, userId), keepSessionToken ? ne(sessions.tokenHash, hashToken(keepSessionToken)) : undefined));
+  }
+
+  async checkPassword(userId: string, password: string): Promise<boolean> {
+    const [u] = await this.db.select({ h: users.passwordHash }).from(users).where(eq(users.id, userId)).limit(1);
+    return !!u?.h && verifyPassword(password, u.h);
+  }
+
+  /** Keeps a regularly used session alive: pushes expiry out again once it is a day old. Returns true if extended. */
+  async renewSession(sessionToken: string): Promise<boolean> {
+    const threshold = new Date(Date.now() + (SESSION_DAYS - 1) * 86_400_000);
+    const rows = await this.db
+      .update(sessions)
+      .set({ expiresAt: new Date(Date.now() + SESSION_DAYS * 86_400_000) })
+      .where(and(eq(sessions.tokenHash, hashToken(sessionToken)), lt(sessions.expiresAt, threshold)))
+      .returning({ id: sessions.id });
+    return rows.length > 0;
   }
 
   async getSessionUser(sessionToken: string): Promise<SessionUser | null> {

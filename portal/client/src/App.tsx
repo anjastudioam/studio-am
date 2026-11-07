@@ -15,6 +15,7 @@ import { LoginPage, VerifyPage } from "./pages/Login";
 import { MasterCalendarPage } from "./pages/MasterCalendar";
 import { MoodboardPage } from "./pages/Moodboard";
 import { NoticesPage } from "./pages/Notices";
+import { TeamPage } from "./pages/Team";
 import { TasksPage } from "./pages/Tasks";
 
 function Start() {
@@ -55,6 +56,7 @@ export function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="calendar" element={<MasterCalendarPage />} />
           <Route path="clients/:id" element={<AdminClientPage />} />
+          <Route path="team" element={<TeamPage />} />
         </Route>
         <Route
           path="/c/:slug"

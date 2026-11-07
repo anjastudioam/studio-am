@@ -8,8 +8,8 @@ const schema = z.object({
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_NAME: z.string().default("Studio AM Admin"),
   RESEND_API_KEY: z.string().optional(),
-  // Demo hosting only: lets the app run without an email provider and print sign-in links to the logs.
-  DEMO_MODE: z.enum(["true", "false"]).default("false"),
+  // Optional first password for the ADMIN_EMAIL account (min 12 chars). Applied only while that account has no password; remove it afterwards.
+  ADMIN_PASSWORD: z.string().min(12).max(200).optional(),
   MAIL_FROM: z.string().default("Studio AM <portal@studio-am.co.za>"),
 });
 
@@ -24,7 +24,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const cfg = parsed.data;
   if (cfg.NODE_ENV === "production") {
     if (!cfg.BASE_URL.startsWith("https://")) throw new Error("BASE_URL must be https in production");
-    if (!cfg.RESEND_API_KEY && cfg.DEMO_MODE !== "true") throw new Error("RESEND_API_KEY must be set in production (or DEMO_MODE=true for dummy-data demos)");
   }
   return cfg;
 }

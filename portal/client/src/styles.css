@@ -80,7 +80,7 @@ img { max-width: 100%; display: block; }
 .field { display: grid; gap: .3rem; min-width: 0; }
 .field-label { font-weight: 500; font-size: .95rem; }
 .field-hint { color: var(--muted); font-size: .85rem; }
-input[type="text"], input[type="email"], input[type="url"], input[type="date"], input:not([type]), select, textarea {
+input[type="text"], input[type="email"], input[type="password"], input[type="url"], input[type="date"], input:not([type]), select, textarea {
   font: inherit; width: 100%; min-height: 44px; padding: .55rem .8rem; color: var(--ink);
   background: rgba(255,255,255,.8); border: 1px solid rgba(60,80,130,.22); border-radius: 12px;
 }

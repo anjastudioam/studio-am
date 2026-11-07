@@ -4,13 +4,13 @@ import { loadConfig } from "../src/config";
 const base = { NODE_ENV: "production", DATABASE_URL: "postgres://x", BASE_URL: "https://example.com" };
 
 describe("production config", () => {
-  it("requires an email provider by default", () => {
-    expect(() => loadConfig(base)).toThrow(/RESEND_API_KEY/);
+  it("starts without an email provider (password sign-in)", () => {
+    expect(loadConfig(base).NODE_ENV).toBe("production");
   });
-  it("allows demo mode without an email provider", () => {
-    expect(loadConfig({ ...base, DEMO_MODE: "true" }).DEMO_MODE).toBe("true");
+  it("requires https", () => {
+    expect(() => loadConfig({ ...base, BASE_URL: "http://example.com" })).toThrow(/https/);
   });
-  it("still requires https in demo mode", () => {
-    expect(() => loadConfig({ ...base, DEMO_MODE: "true", BASE_URL: "http://example.com" })).toThrow(/https/);
+  it("rejects a short admin password", () => {
+    expect(() => loadConfig({ ...base, ADMIN_PASSWORD: "short" })).toThrow(/ADMIN_PASSWORD/);
   });
 });

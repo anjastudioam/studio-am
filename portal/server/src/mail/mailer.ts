@@ -16,6 +16,11 @@ export class ConsoleMailer implements Mailer {
   }
 }
 
+/** Production without an email provider: sends nothing and prints nothing. */
+export class NullMailer implements Mailer {
+  async send(): Promise<void> {}
+}
+
 /** Tests: keeps messages in memory. */
 export class MemoryMailer implements Mailer {
   public sent: MailMessage[] = [];

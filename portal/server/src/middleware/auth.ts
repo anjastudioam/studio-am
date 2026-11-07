@@ -1,17 +1,22 @@
 import type { NextFunction, Request, Response } from "express";
-import type { AuthService } from "../auth/service";
+import { SESSION_DAYS, type AuthService } from "../auth/service";
 import { HttpError, wrap } from "../http";
 
 export const SESSION_COOKIE = "sam_session";
 
-export function sessionLoader(auth: AuthService) {
-  return wrap(async (req: Request, _res: Response, next: NextFunction) => {
+export function sessionCookieOptions(production: boolean) {
+  return { httpOnly: true, secure: production, sameSite: "lax" as const, path: "/", maxAge: SESSION_DAYS * 86_400_000 };
+}
+
+export function sessionLoader(auth: AuthService, production = false) {
+  return wrap(async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies?.[SESSION_COOKIE];
     if (typeof token === "string" && token.length > 0) {
       const user = await auth.getSessionUser(token);
       if (user) {
         req.user = user;
         req.sessionToken = token;
+        if (await auth.renewSession(token)) res.cookie(SESSION_COOKIE, token, sessionCookieOptions(production));
       }
     }
     next();

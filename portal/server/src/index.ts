@@ -4,15 +4,19 @@ import { ensureAdmin } from "./bootstrap";
 import { loadConfig } from "./config";
 import { createDb } from "./db";
 import { runMigrations } from "./db/migrate";
-import { ConsoleMailer, ResendMailer } from "./mail/mailer";
+import { ConsoleMailer, NullMailer, ResendMailer } from "./mail/mailer";
 
 async function main() {
   const cfg = loadConfig();
   const { db, pool } = createDb(cfg.DATABASE_URL);
   await runMigrations(db);
-  await ensureAdmin(db, cfg.ADMIN_EMAIL, cfg.ADMIN_NAME);
+  await ensureAdmin(db, cfg.ADMIN_EMAIL, cfg.ADMIN_NAME, cfg.ADMIN_PASSWORD);
 
-  const mailer = cfg.RESEND_API_KEY ? new ResendMailer(cfg.RESEND_API_KEY, cfg.MAIL_FROM) : new ConsoleMailer();
+  const mailer = cfg.RESEND_API_KEY
+    ? new ResendMailer(cfg.RESEND_API_KEY, cfg.MAIL_FROM)
+    : cfg.NODE_ENV === "production"
+      ? new NullMailer()
+      : new ConsoleMailer();
   const app = createApp({ cfg, db, mailer, clientDir: path.resolve(__dirname, "../../client/dist") });
 
   const server = app.listen(cfg.PORT, () => console.log(`Studio AM portal listening on ${cfg.PORT}`));

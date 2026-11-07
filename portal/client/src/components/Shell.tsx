@@ -13,6 +13,7 @@ import {
   Megaphone,
   Plus,
   Users,
+  UserCog,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useLoad } from "../hooks";
@@ -78,6 +79,7 @@ const GLOBAL_ITEMS: DockItem[] = [
   { to: "/admin", label: "Dashboard", icon: <House {...ICON} />, end: true },
   { to: "/admin/calendar", label: "Master calendar", icon: <CalendarDays {...ICON} /> },
   { to: "/admin/clients", label: "Clients", icon: <Users {...ICON} /> },
+  { to: "/admin/team", label: "Team and password", icon: <UserCog {...ICON} /> },
 ];
 
 function ClientSwitcher({ current }: { current: string }) {

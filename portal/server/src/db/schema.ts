@@ -69,6 +69,9 @@ export const users = pgTable(
     // A client user belongs to exactly one client in v1. Admins have no client.
     clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
     active: boolean("active").notNull().default(true),
+    passwordHash: text("password_hash"),
+    failedLogins: integer("failed_logins").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
     createdAt: createdAt(),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   },

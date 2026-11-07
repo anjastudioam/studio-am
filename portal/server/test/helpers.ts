@@ -16,6 +16,7 @@ export const cfg: Config = {
   DATABASE_URL: TEST_DB,
   ADMIN_EMAIL: undefined,
   ADMIN_NAME: "Admin",
+  ADMIN_PASSWORD: undefined,
   RESEND_API_KEY: undefined,
   MAIL_FROM: "Studio AM <portal@example.test>",
 };

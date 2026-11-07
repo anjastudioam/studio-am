@@ -6,9 +6,10 @@ import { Btn, ErrorNote, Field, Loading } from "../components/ui";
 import { useAction } from "../hooks";
 
 export function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, refresh } = useAuth();
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const { busy, error, run } = useAction();
 
   if (loading) return <Loading />;
@@ -17,41 +18,35 @@ export function LoginPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const ok = await run(async () => {
-      await api.post("/api/auth/request", { email });
+      await api.post("/api/auth/login", { email, password });
       return true;
     });
-    if (ok) setSent(true);
+    if (ok) await refresh();
   };
 
   return (
     <div className="login">
       <div className="mist" aria-hidden="true" />
       <div className="login-form">
-        {sent ? (
-          <div className="login-card" role="status">
-            <img className="login-logo" src="/logo.png" alt="Studio AM" width={72} height={72} />
-            <h1>Check your email</h1>
-            <p className="lead">
-              If <strong>{email}</strong> is registered, a sign-in link is on its way. It works once and expires in 15 minutes.
-            </p>
-            <Btn kind="quiet" onClick={() => setSent(false)}>
-              Use a different email
-            </Btn>
-          </div>
-        ) : (
-          <form className="login-card" onSubmit={submit}>
-            <img className="login-logo" src="/logo.png" alt="Studio AM" width={72} height={72} />
-            <h1>Sign in to Studio AM</h1>
-            <p className="lead">Enter your email and we'll send you a sign-in link. No password needed.</p>
-            <Field label="Email address">
-              <input type="email" required autoComplete="email" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studio-am.co.za" />
-            </Field>
-            <ErrorNote message={error} />
-            <Btn type="submit" busy={busy}>
-              Email me a sign-in link
-            </Btn>
-          </form>
-        )}
+        <form className="login-card" onSubmit={submit}>
+          <img className="login-logo" src="/logo.png" alt="Studio AM" width={72} height={72} />
+          <h1>Sign in to Studio AM</h1>
+          <p className="lead">Use your email and password. You'll stay signed in on this device.</p>
+          <Field label="Email address">
+            <input type="email" required autoComplete="username" autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@studio-am.co.za" />
+          </Field>
+          <Field label="Password">
+            <input type={show ? "text" : "password"} required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </Field>
+          <label className="check small">
+            <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} />
+            <span>Show password</span>
+          </label>
+          <ErrorNote message={error} />
+          <Btn type="submit" busy={busy}>
+            Sign in
+          </Btn>
+        </form>
       </div>
     </div>
   );

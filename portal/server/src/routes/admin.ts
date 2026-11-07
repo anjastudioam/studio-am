@@ -2,6 +2,7 @@ import { Router } from "express";
 import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { audit } from "../audit";
+import { MIN_PASSWORD_LENGTH } from "../auth/password";
 import { AuthService, normaliseEmail } from "../auth/service";
 import type { Db } from "../db";
 import { auditLog, clients, posts, tasks, users } from "../db/schema";
@@ -190,6 +191,69 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
         entityId: id,
       });
       res.json(row);
+    }),
+  );
+
+  // ---- Team: the people who can sign in to Studio AM (admins) ----
+  const teamShape = (u: typeof users.$inferSelect) => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    active: u.active,
+    hasPassword: !!u.passwordHash,
+    lastLoginAt: u.lastLoginAt,
+  });
+  const passwordField = z.string().min(MIN_PASSWORD_LENGTH, `Use at least ${MIN_PASSWORD_LENGTH} characters`).max(200);
+
+  r.get(
+    "/team",
+    wrap(async (_req, res) => {
+      const rows = await db.select().from(users).where(eq(users.role, "ADMIN")).orderBy(users.name);
+      res.json(rows.map(teamShape));
+    }),
+  );
+
+  r.post(
+    "/team",
+    wrap(async (req, res) => {
+      const parsed = z
+        .object({ email: z.string().trim().email().max(254), name: z.string().trim().min(1).max(120), password: passwordField })
+        .strict()
+        .safeParse(req.body);
+      if (!parsed.success) throw new HttpError(400, parsed.error.issues[0]?.message ?? "Invalid input");
+      const email = normaliseEmail(parsed.data.email);
+      const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+      if (exists) throw new HttpError(409, "That email is already registered");
+      const [row] = await db.insert(users).values({ email, name: parsed.data.name, role: "ADMIN" }).returning();
+      await auth.setPassword(row.id, parsed.data.password);
+      await audit(db, { actorUserId: req.user!.id, action: "team.add", entity: "user", entityId: row.id });
+      const [fresh] = await db.select().from(users).where(eq(users.id, row.id)).limit(1);
+      res.status(201).json(teamShape(fresh));
+    }),
+  );
+
+  r.patch(
+    "/team/:id",
+    wrap(async (req, res) => {
+      const id = String(req.params.id);
+      if (!isUuid(id)) throw new HttpError(404, "Not found");
+      const parsed = z.object({ password: passwordField.optional(), active: z.boolean().optional() }).strict().safeParse(req.body);
+      if (!parsed.success || Object.keys(parsed.data).length === 0)
+        throw new HttpError(400, parsed.success ? "Nothing to change" : (parsed.error.issues[0]?.message ?? "Invalid input"));
+      const [target] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      if (!target || target.role !== "ADMIN") throw new HttpError(404, "Not found");
+      if (parsed.data.active === false && id === req.user!.id) throw new HttpError(400, "You can't deactivate yourself");
+
+      if (parsed.data.active !== undefined) {
+        await db.update(users).set({ active: parsed.data.active }).where(eq(users.id, id));
+        if (!parsed.data.active) await auth.revokeAllSessions(id);
+      }
+      if (parsed.data.password) {
+        await auth.setPassword(id, parsed.data.password, id === req.user!.id ? req.sessionToken : undefined);
+        await audit(db, { actorUserId: req.user!.id, action: "team.password_reset", entity: "user", entityId: id });
+      }
+      const [fresh] = await db.select().from(users).where(eq(users.id, id)).limit(1);
+      res.json(teamShape(fresh));
     }),
   );
 
