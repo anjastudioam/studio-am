@@ -14,7 +14,6 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx server/src/db/migrate-cli.ts",
-    "seed:demo": "tsx server/src/db/seed-demo.ts",
     "dev:client": "vite"
   },
   "dependencies": {

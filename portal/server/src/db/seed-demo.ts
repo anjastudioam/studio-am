@@ -1,12 +1,10 @@
 /**
- * Fills the database with FICTIONAL demo clients so the portal can be tried out.
- * Refuses to run in production. Never put real client data in a demo database.
+ * FICTIONAL demo clients so the portal can be tried out. Every demo client has is_demo = true
+ * and is removed together with all its data by the Settings page. Never put real client data in them.
  */
 import { eq } from "drizzle-orm";
-import { loadConfig } from "../config";
-import { createDb } from "./index";
-import { runMigrations } from "./migrate";
-import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, tasks, users } from "./schema";
+import type { Db } from "./index";
+import { clients, fileItems, ideas, linkItems, moodItems, notices, posts, tasks } from "./schema";
 
 const iso = (offsetDays: number) => {
   const d = new Date();
@@ -14,31 +12,15 @@ const iso = (offsetDays: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-async function main() {
-  const cfg = loadConfig();
-  if (cfg.NODE_ENV === "production") throw new Error("Refusing to seed demo data in production");
-  const { db, pool } = createDb(cfg.DATABASE_URL);
-  await runMigrations(db);
-
+/** Creates the fictional demo clients, flagged is_demo so they can be removed in one click. Returns false if already loaded. */
+export async function seedDemo(db: Db): Promise<boolean> {
   const existing = await db.select().from(clients).where(eq(clients.slug, "sunrise-bakery"));
   if (existing.length > 0) {
-    console.log("Demo data already present.");
-    await pool.end();
-    return;
+    return false;
   }
 
-  if (cfg.ADMIN_EMAIL) {
-    const e = cfg.ADMIN_EMAIL.toLowerCase();
-    const [a] = await db.select().from(users).where(eq(users.email, e));
-    if (!a) await db.insert(users).values({ email: e, name: cfg.ADMIN_NAME, role: "ADMIN" });
-  }
-
-  const [bakery] = await db.insert(clients).values({ name: "Sunrise Bakery (demo)", slug: "sunrise-bakery" }).returning();
-  const [outfit] = await db.insert(clients).values({ name: "Karoo Outfitters (demo)", slug: "karoo-outfitters" }).returning();
-  await db.insert(users).values([
-    { email: "thandi@sunrise-demo.test", name: "Thandi Mokoena", role: "CLIENT", clientId: bakery.id },
-    { email: "pieter@karoo-demo.test", name: "Pieter Botha", role: "CLIENT", clientId: outfit.id },
-  ]);
+  const [bakery] = await db.insert(clients).values({ name: "Sunrise Bakery (demo)", slug: "sunrise-bakery", isDemo: true }).returning();
+  const [outfit] = await db.insert(clients).values({ name: "Karoo Outfitters (demo)", slug: "karoo-outfitters", isDemo: true }).returning();
 
   const id = bakery.id;
   await db.insert(linkItems).values([
@@ -93,11 +75,5 @@ async function main() {
   });
   await db.insert(notices).values({ clientId: outfit.id, title: "Welcome to your portal", body: "Everything for your project lives here.", pinned: true });
 
-  console.log("Demo data created: sunrise-bakery, karoo-outfitters");
-  await pool.end();
+  return true;
 }
-
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});

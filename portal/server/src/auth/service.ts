@@ -40,7 +40,7 @@ export class AuthService {
   async requestLogin(rawEmail: string): Promise<void> {
     const email = normaliseEmail(rawEmail);
     const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!user || !user.active) return;
+    if (!user || !user.active || user.role !== "ADMIN") return;
 
     const [{ n }] = await this.db
       .select({ n: count() })
@@ -72,7 +72,7 @@ export class AuthService {
     if (claimed.length === 0) return null;
 
     const [user] = await this.db.select().from(users).where(eq(users.id, claimed[0].userId)).limit(1);
-    if (!user || !user.active) return null;
+    if (!user || !user.active || user.role !== "ADMIN") return null;
 
     const sessionToken = await this.startSession(user.id, userAgent);
     return { sessionToken, user: toSessionUser(user) };
@@ -102,7 +102,7 @@ export class AuthService {
   ): Promise<{ sessionToken: string; user: SessionUser } | null> {
     const email = normaliseEmail(rawEmail);
     const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!user || !user.active || !user.passwordHash) {
+    if (!user || !user.active || user.role !== "ADMIN" || !user.passwordHash) {
       await verifyPassword(password, await dummyHash());
       return null;
     }
@@ -158,7 +158,8 @@ export class AuthService {
       .where(and(eq(sessions.tokenHash, hashToken(sessionToken)), gt(sessions.expiresAt, new Date())))
       .limit(1);
     const user = rows[0]?.user;
-    if (!user || !user.active) return null;
+    // Studio AM is internal only: clients never have access, whatever is in the database.
+    if (!user || !user.active || user.role !== "ADMIN") return null;
     return toSessionUser(user);
   }
 

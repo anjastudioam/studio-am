@@ -58,3 +58,6 @@ The portal interface was rebuilt to match `Minimal new tab dashboard UI design -
 | Radii | 24 / 16 / 10 px | Panels / cards / small controls |
 
 Layout: floating icon dock on the left (bottom pill bar on phones), widget dashboard at `/admin`, glass panel for every other page. Font stays Jost (clock at weight 300).
+
+## Current theme: dark glass (Phase 0)
+Dark-first. Base #07162c to #14275a with teal/violet glows. Ink #e9f1ff, muted #9fb2cf, accent teal #5ad6cf. Glass rgba(255,255,255,.075), edge rgba(255,255,255,.16). Radii 24/18/12. Jost. Supersedes light-glass notes above.

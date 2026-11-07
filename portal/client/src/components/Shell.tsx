@@ -1,23 +1,33 @@
-import { createContext, ReactNode, useContext } from "react";
+import { createContext, ReactNode, useContext, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   CalendarDays,
-  CalendarRange,
+  ClipboardCheck,
+  FolderKanban,
   FolderOpen,
-  House,
-  Images,
+  Globe,
+  LayoutDashboard,
+  Library,
   Lightbulb,
   Link2,
   ListChecks,
   LogOut,
   Megaphone,
-  Plus,
+  Menu,
+  NotebookPen,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Palette,
+  Settings,
+  Share2,
+  Target,
   Users,
-  UserCog,
+  Wallet,
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useLoad } from "../hooks";
 import type { AdminClient, Home } from "../types";
+import { GlobalSearch } from "./GlobalSearch";
 import { Loading } from "./ui";
 
 type PortalCtx = { slug: string; home: Home; reloadHome: () => Promise<void>; isAdmin: boolean; base: string };
@@ -28,68 +38,152 @@ export const usePortal = () => {
   return v;
 };
 
-type DockItem = { to: string; label: string; icon: ReactNode; end?: boolean };
 const ICON = { size: 20, strokeWidth: 1.75, "aria-hidden": true } as const;
 
-function Mist() {
-  return <div className="mist" aria-hidden="true" />;
-}
+type NavItem = { to: string; label: string; icon: ReactNode; end?: boolean; soon?: boolean; also?: string };
+const NAV: { group: string; items: NavItem[] }[] = [
+  {
+    group: "Workspace",
+    items: [
+      { to: "/admin", label: "Dashboard", icon: <LayoutDashboard {...ICON} />, end: true },
+      { to: "/admin/clients", label: "Client Directory", icon: <Users {...ICON} />, also: "/c/" },
+      { to: "/admin/projects", label: "Projects", icon: <FolderKanban {...ICON} />, soon: true },
+      { to: "/admin/tasks", label: "Task Manager", icon: <ListChecks {...ICON} /> },
+      { to: "/admin/calendar", label: "Calendar", icon: <CalendarDays {...ICON} /> },
+      { to: "/admin/ideas", label: "Idea Bank", icon: <Lightbulb {...ICON} />, soon: true },
+    ],
+  },
+  {
+    group: "Client operations",
+    items: [
+      { to: "/admin/brand", label: "Brand Management", icon: <Palette {...ICON} />, soon: true },
+      { to: "/admin/social", label: "Social Media", icon: <Share2 {...ICON} />, soon: true },
+      { to: "/admin/websites", label: "Website Management", icon: <Globe {...ICON} />, soon: true },
+      { to: "/admin/audits", label: "Audits & Reporting", icon: <ClipboardCheck {...ICON} />, soon: true },
+      { to: "/admin/meetings", label: "Meetings & Notes", icon: <NotebookPen {...ICON} />, soon: true },
+    ],
+  },
+  {
+    group: "Business management",
+    items: [
+      { to: "/admin/files", label: "File Repository", icon: <FolderOpen {...ICON} />, soon: true },
+      { to: "/admin/finance", label: "Finance & Invoices", icon: <Wallet {...ICON} />, soon: true },
+      { to: "/admin/leads", label: "Leads & Prospects", icon: <Target {...ICON} />, soon: true },
+      { to: "/admin/resources", label: "Resource Library", icon: <Library {...ICON} />, soon: true },
+      { to: "/admin/notices", label: "Notice Board", icon: <Megaphone {...ICON} />, soon: true },
+      { to: "/admin/links", label: "Link Stack", icon: <Link2 {...ICON} />, soon: true },
+      { to: "/admin/settings", label: "Settings", icon: <Settings {...ICON} /> },
+    ],
+  },
+];
 
-function Dock({ global, local }: { global: DockItem[]; local?: DockItem[] }) {
-  const { logout } = useAuth();
-  const nav = useNavigate();
-  const link = (i: DockItem) => (
-    <NavLink key={i.to + i.label} to={i.to} end={i.end} className={({ isActive }) => `dock-item ${isActive ? "active" : ""}`} aria-label={i.label} data-label={i.label}>
-      {i.icon}
-    </NavLink>
-  );
+function SideNav({ onNavigate }: { onNavigate: () => void }) {
+  const { pathname } = useLocation();
   return (
-    <nav className="dock" aria-label="Main">
-      <NavLink to="/admin" className="dock-brand" aria-label="Studio AM home" data-label="Studio AM">
-        <img src="/logo.png" alt="" width={44} height={44} />
-      </NavLink>
-      <div className="dock-group">{global.map(link)}</div>
-      {local && local.length > 0 ? (
-        <>
-          <span className="dock-sep" aria-hidden="true" />
-          <div className="dock-group">{local.map(link)}</div>
-        </>
-      ) : null}
-      <div className="dock-foot">
-        <NavLink to="/admin/calendar?new=1" className="dock-item" aria-label="New post" data-label="New post">
-          <Plus {...ICON} />
-        </NavLink>
-        <button
-          className="dock-item"
-          aria-label="Sign out"
-          data-label="Sign out"
-          onClick={async () => {
-            await logout();
-            nav("/login");
-          }}
-        >
-          <LogOut {...ICON} />
-        </button>
-      </div>
+    <nav className="sidenav" aria-label="Main">
+      {NAV.map((g) => (
+        <div key={g.group} style={{ display: "contents" }}>
+          <div className="nav-group">{g.group}</div>
+          {g.items.map((i) => {
+            const active = i.end ? pathname === i.to || pathname === i.to + "/" : pathname.startsWith(i.to) || (!!i.also && pathname.startsWith(i.also));
+            return (
+              <NavLink
+                key={i.to}
+                to={i.to}
+                end={i.end}
+                onClick={onNavigate}
+                data-label={i.label}
+                aria-current={active ? "page" : undefined}
+                className={`navlink ${active ? "active" : ""} ${i.soon ? "soon" : ""}`}
+              >
+                {i.icon}
+                <span className="nav-label">{i.label}</span>
+                {i.soon ? <span className="soon-tag">Soon</span> : null}
+              </NavLink>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }
 
-const GLOBAL_ITEMS: DockItem[] = [
-  { to: "/admin", label: "Dashboard", icon: <House {...ICON} />, end: true },
-  { to: "/admin/calendar", label: "Master calendar", icon: <CalendarDays {...ICON} /> },
-  { to: "/admin/clients", label: "Clients", icon: <Users {...ICON} /> },
-  { to: "/admin/team", label: "Team and password", icon: <UserCog {...ICON} /> },
-];
+function initialsOf(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("") || "?";
+}
+
+function AppShell({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth();
+  const nav = useNavigate();
+  const { pathname } = useLocation();
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sam.nav.collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    try {
+      localStorage.setItem("sam.nav.collapsed", collapsed ? "1" : "0");
+    } catch {
+      /* private mode: the setting just won't persist */
+    }
+  }, [collapsed]);
+
+  return (
+    <div className="app">
+      <div className="mist" aria-hidden="true" />
+      <div className={`window glass ${collapsed ? "collapsed" : ""} ${open ? "nav-open" : ""}`}>
+        <header className="topbar">
+          <button className="menu-btn mobile" aria-label="Open menu" onClick={() => setOpen(true)}>
+            <Menu {...ICON} />
+          </button>
+          <NavLink to="/admin" className="brand" aria-label="Studio AM home">
+            <img src="/logo.png" alt="" width={40} height={40} />
+            <span>Studio AM</span>
+          </NavLink>
+          <button className="menu-btn collapse" aria-label={collapsed ? "Expand menu" : "Collapse menu"} onClick={() => setCollapsed(!collapsed)}>
+            {collapsed ? <PanelLeftOpen {...ICON} /> : <PanelLeftClose {...ICON} />}
+          </button>
+          <div className="top-spacer" />
+          <GlobalSearch />
+          <div className="who">
+            <span className="avatar" aria-hidden="true">{initialsOf(user?.name ?? "")}</span>
+            <span className="who-name">{user?.name}</span>
+          </div>
+          <button
+            className="icon-btn"
+            aria-label="Sign out"
+            title="Sign out"
+            onClick={async () => {
+              await logout();
+              nav("/login");
+            }}
+          >
+            <LogOut {...ICON} />
+          </button>
+        </header>
+        <SideNav onNavigate={() => setOpen(false)} />
+        <div className="scrim" onClick={() => setOpen(false)} aria-hidden="true" />
+        <main className="main" id="main">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
 
 function ClientSwitcher({ current }: { current: string }) {
   const nav = useNavigate();
   const { data } = useLoad<AdminClient[]>("/api/admin/clients");
   if (!data) return null;
-  const active = data.filter((c) => c.status !== "ARCHIVED");
+  const active = data.filter((c) => c.status !== "ARCHIVED" || c.slug === current);
   return (
     <label className="switcher">
-      <span className="switcher-label">Client</span>
+      <span className="switcher-label">Switch client</span>
       <select value={current} onChange={(e) => nav(`/c/${e.target.value}`)} aria-label="Switch client">
         {active.map((c) => (
           <option key={c.id} value={c.slug}>
@@ -108,65 +202,66 @@ export function PortalShell() {
   const { data, error, loading, reload } = useLoad<Home>(`/api/c/${encodeURIComponent(slug)}/home`);
   const base = `/c/${slug}`;
 
-  if (loading) return <Loading />;
+  if (loading)
+    return (
+      <AppShell>
+        <Loading />
+      </AppShell>
+    );
   if (error || !data)
     return (
-      <div className="frame">
-        <Mist />
+      <AppShell>
         <div className="center-note glass">
-          <h1>We can't find that page</h1>
-          <p>{error ?? "It may have moved, or you may not have access."}</p>
-          <NavLink to="/" className="text-link">
-            Back to start
+          <h1>We can't find that client</h1>
+          <p>{error ?? "It may have been removed."}</p>
+          <NavLink to="/admin/clients" className="text-link">
+            Back to Client Directory
           </NavLink>
         </div>
-      </div>
+      </AppShell>
     );
 
-  const local: DockItem[] = [
-    { to: base, label: "Client overview", icon: <House {...ICON} />, end: true },
-    { to: `${base}/calendar`, label: "Client calendar", icon: <CalendarRange {...ICON} /> },
-    { to: `${base}/files`, label: "Files", icon: <FolderOpen {...ICON} /> },
-    { to: `${base}/links`, label: "Links", icon: <Link2 {...ICON} /> },
-    { to: `${base}/tasks`, label: "To-do", icon: <ListChecks {...ICON} /> },
-    { to: `${base}/ideas`, label: "Idea bank", icon: <Lightbulb {...ICON} /> },
-    { to: `${base}/moodboard`, label: "Moodboard", icon: <Images {...ICON} /> },
-    { to: `${base}/notices`, label: "Notice board", icon: <Megaphone {...ICON} /> },
+  const tabs = [
+    { to: base, label: "Overview", end: true },
+    { to: `${base}/calendar`, label: "Calendar" },
+    { to: `${base}/files`, label: "Files" },
+    { to: `${base}/links`, label: "Links" },
+    { to: `${base}/tasks`, label: "To-do" },
+    { to: `${base}/ideas`, label: "Ideas" },
+    { to: `${base}/moodboard`, label: "Moodboard" },
+    { to: `${base}/notices`, label: "Notices" },
   ];
 
   return (
     <PortalContext.Provider value={{ slug, home: data, reloadHome: reload, isAdmin, base }}>
-      <div className="frame">
-        <Mist />
-        <Dock global={isAdmin ? GLOBAL_ITEMS : []} local={local} />
-        <main className="canvas" id="main">
-          <header className="topbar">
-            <div className="chip-glass">
-              <span className="muted">Working on</span> <strong>{data.client.name}</strong>
-            </div>
-            {isAdmin ? <ClientSwitcher current={slug} /> : null}
-          </header>
-          <div className="panel">
-            <Outlet />
+      <AppShell>
+        <div className="crumbs">
+          <div className="crumb-trail">
+            <NavLink to="/admin/clients">Client Directory</NavLink>
+            <span aria-hidden="true">/</span>
+            <strong>{data.client.name}</strong>
           </div>
-        </main>
-      </div>
+          <ClientSwitcher current={slug} />
+        </div>
+        <nav className="client-tabs" aria-label={`${data.client.name} sections`}>
+          {tabs.map((t) => (
+            <NavLink key={t.to} to={t.to} end={t.end} className={({ isActive }) => (isActive ? "active" : "")}>
+              {t.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="panel">
+          <Outlet />
+        </div>
+      </AppShell>
     </PortalContext.Provider>
   );
 }
 
 export function AdminShell() {
-  const { pathname } = useLocation();
-  const dashboard = pathname === "/admin" || pathname === "/admin/";
   return (
-    <div className="frame">
-      <Mist />
-      <Dock global={GLOBAL_ITEMS} />
-      <main className="canvas" id="main">
-        <div className={dashboard ? "stage" : "panel"}>
-          <Outlet />
-        </div>
-      </main>
-    </div>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }

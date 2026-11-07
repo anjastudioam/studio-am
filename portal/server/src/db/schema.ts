@@ -54,6 +54,7 @@ export const clients = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     status: clientStatusEnum("status").notNull().default("ACTIVE"),
+    isDemo: boolean("is_demo").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex("clients_slug_uq").on(t.slug)],

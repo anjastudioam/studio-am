@@ -43,7 +43,7 @@ function ChangeOwnPassword() {
   );
 }
 
-export function TeamPage() {
+export function TeamPage({ bare = false }: { bare?: boolean }) {
   const { user } = useAuth();
   const { data, error, loading, reload } = useLoad<Member[]>("/api/admin/team");
   const [adding, setAdding] = useState(false);
@@ -78,11 +78,20 @@ export function TeamPage() {
 
   return (
     <>
-      <PageHead
-        title="Team"
-        lead="Everyone here can sign in with their email and password and see all clients. Passwords are stored scrambled, so nobody can read them, only reset them."
-        actions={<Btn onClick={() => setAdding(true)}>Add person</Btn>}
-      />
+      {bare ? (
+        <div className="page-actions" style={{ marginBottom: "1rem", justifyContent: "space-between", flexWrap: "wrap" }}>
+          <p className="muted" style={{ maxWidth: "40rem" }}>
+            Everyone here signs in with their email and password and sees all clients. Passwords are stored scrambled, so nobody can read them, only reset them.
+          </p>
+          <Btn onClick={() => setAdding(true)}>Add person</Btn>
+        </div>
+      ) : (
+        <PageHead
+          title="Team"
+          lead="Everyone here can sign in with their email and password and see all clients. Passwords are stored scrambled, so nobody can read them, only reset them."
+          actions={<Btn onClick={() => setAdding(true)}>Add person</Btn>}
+        />
+      )}
 
       {adding ? (
         <form className="inline-form" onSubmit={create}>
@@ -164,7 +173,7 @@ export function TeamPage() {
         </form>
       ) : null}
 
-      <h2 style={{ margin: "2.5rem 0 1rem" }}>Your password</h2>
+      <h3 style={{ margin: "2rem 0 1rem" }}>Change your own password</h3>
       <ChangeOwnPassword />
     </>
   );

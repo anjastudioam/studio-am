@@ -55,3 +55,6 @@ One shared account. Added: master content calendar across all clients (colour-co
 - Added GET /api/admin/tasks (open to-dos across clients) for the dashboard.
 - Master calendar accepts ?post=, ?new=1, ?status=, ?client= so dashboard cards and search can deep-link.
 - Logo is a raster PNG and looks soft when enlarged; an SVG version is needed.
+
+## Phase 0 (foundation)
+Internal-only: password sign-in, Team page, dark glass UI, grouped navigation (unbuilt modules marked Soon), global search (Ctrl/Cmd K), Task Manager, PWA install. To rework in Phase 1/2: users.role CLIENT, users.client_id, login_tokens, post_events, client-approval post statuses.

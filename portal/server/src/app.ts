@@ -76,7 +76,16 @@ export function createApp(deps: AppDeps) {
   // Built client app (single-page app) when present.
   const clientDir = deps.clientDir;
   if (clientDir && fs.existsSync(path.join(clientDir, "index.html"))) {
-    app.use(express.static(clientDir, { index: false, maxAge: "1h" }));
+    app.use(
+      express.static(clientDir, {
+        index: false,
+        maxAge: "1h",
+        // The service worker and manifest must always be re-checked so app updates reach installed copies.
+        setHeaders: (res, file) => {
+          if (/(sw\.js|manifest\.webmanifest)$/.test(file)) res.setHeader("Cache-Control", "no-cache");
+        },
+      }),
+    );
     app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(clientDir, "index.html")));
   }
 

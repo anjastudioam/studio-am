@@ -8,6 +8,7 @@ import type { Db } from "../db";
 import { auditLog, clients, posts, tasks, users } from "../db/schema";
 import { ne } from "drizzle-orm";
 import { HttpError, isUuid, wrap } from "../http";
+import { seedDemo } from "../db/seed-demo";
 import { requireAdmin } from "../middleware/auth";
 
 export function slugify(name: string): string {
@@ -133,64 +134,29 @@ export function adminRoutes(opts: { db: Db; auth: AuthService }) {
     }),
   );
 
+  // ---- Demo data: fictional clients that can be loaded or removed in one click ----
   r.get(
-    "/clients/:id/users",
-    wrap(async (req, res) => {
-      const id = String(req.params.id);
-      if (!isUuid(id)) throw new HttpError(404, "Not found");
-      const rows = await db.select().from(users).where(eq(users.clientId, id)).orderBy(users.name);
-      res.json(rows);
+    "/demo-data",
+    wrap(async (_req, res) => {
+      const [{ n }] = await db.select({ n: count() }).from(clients).where(eq(clients.isDemo, true));
+      res.json({ loaded: n > 0, clients: n });
     }),
   );
-
   r.post(
-    "/clients/:id/users",
+    "/demo-data",
     wrap(async (req, res) => {
-      const id = String(req.params.id);
-      if (!isUuid(id)) throw new HttpError(404, "Not found");
-      const parsed = z
-        .object({ email: z.string().trim().email().max(254), name: z.string().trim().min(1).max(120), sendInvite: z.boolean().optional() })
-        .strict()
-        .safeParse(req.body);
-      if (!parsed.success) throw new HttpError(400, "A name and a valid email are required");
-
-      const [client] = await db.select().from(clients).where(eq(clients.id, id)).limit(1);
-      if (!client) throw new HttpError(404, "Not found");
-
-      const email = normaliseEmail(parsed.data.email);
-      const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-      if (exists) throw new HttpError(409, "That email is already registered");
-
-      const [row] = await db
-        .insert(users)
-        .values({ email, name: parsed.data.name, role: "CLIENT", clientId: id })
-        .returning();
-      await audit(db, { actorUserId: req.user!.id, clientId: id, action: "user.invite", entity: "user", entityId: row.id });
-      if (parsed.data.sendInvite) await auth.requestLogin(email);
-      res.status(201).json(row);
+      const created = await seedDemo(db);
+      if (created) await audit(db, { actorUserId: req.user!.id, action: "demo.load" });
+      res.status(created ? 201 : 200).json({ loaded: true });
     }),
   );
-
-  r.patch(
-    "/users/:id",
+  r.delete(
+    "/demo-data",
     wrap(async (req, res) => {
-      const id = String(req.params.id);
-      if (!isUuid(id)) throw new HttpError(404, "Not found");
-      const parsed = z.object({ active: z.boolean() }).strict().safeParse(req.body);
-      if (!parsed.success) throw new HttpError(400, "Invalid input");
-      if (id === req.user!.id && !parsed.data.active) throw new HttpError(400, "You can't deactivate yourself");
-
-      const [row] = await db.update(users).set({ active: parsed.data.active }).where(eq(users.id, id)).returning();
-      if (!row) throw new HttpError(404, "Not found");
-      if (!parsed.data.active) await auth.revokeAllSessions(id);
-      await audit(db, {
-        actorUserId: req.user!.id,
-        clientId: row.clientId,
-        action: parsed.data.active ? "user.activate" : "user.deactivate",
-        entity: "user",
-        entityId: id,
-      });
-      res.json(row);
+      // Every client-owned table cascades from clients, so this removes all demo content.
+      const removed = await db.delete(clients).where(eq(clients.isDemo, true)).returning({ id: clients.id });
+      await audit(db, { actorUserId: req.user!.id, action: "demo.remove" });
+      res.json({ removed: removed.length });
     }),
   );
 

@@ -58,12 +58,9 @@ describe("password sign-in", () => {
     await admin.post("/api/admin/team").send({ email: "wife@studio.test", name: "Wife", password: "short" }).expect(400);
   });
 
-  it("does not let client users or signed-out visitors use the team endpoints", async () => {
-    await seedBasics(ctx.db);
-    const alice = await signIn(ctx, "alice@alpha.test");
-    await alice.get("/api/admin/team").expect(403);
-    await alice.post("/api/admin/team").send({ email: "x@y.test", name: "X", password: PW }).expect(403);
+  it("does not let signed-out visitors use the team endpoints", async () => {
     await request(ctx.app).get("/api/admin/team").expect(401);
+    await request(ctx.app).post("/api/admin/team").send({ email: "x@y.test", name: "X", password: PW }).expect(401);
   });
 
   it("never returns password hashes", async () => {

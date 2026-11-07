@@ -6,8 +6,7 @@ import { createScope } from "../scope/clientScope";
 
 /**
  * Resolves /api/c/:slug to a client and attaches a ClientScope.
- * A client user asking for any client other than their own gets a plain 404,
- * the same response as a client that does not exist, so nothing leaks.
+ * Studio AM staff only. Every query after this point is pinned to the one client named in the URL.
  */
 export function resolveClient(db: Db) {
   return wrap(async (req, _res, next) => {
@@ -19,11 +18,6 @@ export function resolveClient(db: Db) {
 
     const notFound = new HttpError(404, "Not found");
     if (!client) throw notFound;
-    if (user.role === "CLIENT") {
-      if (user.clientId !== client.id) throw notFound;
-      if (client.status === "ARCHIVED") throw notFound;
-    }
-
     req.client = { id: client.id, name: client.name, slug: client.slug, status: client.status };
     req.scope = createScope(db, client.id);
     next();

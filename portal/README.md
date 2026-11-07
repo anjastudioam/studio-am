@@ -15,14 +15,17 @@ npm install
 cp .env.example .env        # then edit DATABASE_URL and ADMIN_EMAIL
 npm run dev                 # starts on http://localhost:3000, applies migrations, creates the admin
 ```
-With no `RESEND_API_KEY`, sign-in links are printed in the terminal instead of emailed.
+Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` (12+ characters; applied only while the account has no password). Add teammates and reset passwords under Settings. This is an internal tool: client accounts cannot sign in.
 
-## Try it with dummy data
+## Sample data
+Load or remove fictional clients from Settings, Sample data. They are flagged `is_demo` and removed with everything they own.
+
+## Install as an app
+The portal is a PWA. Over HTTPS, use Install in Chrome/Edge, Add to Home screen on Android, or Share, Add to Home Screen on iOS.
+
 ```
-npm run seed:demo           # creates two FICTIONAL clients (refuses to run in production)
 npm run build && npm start  # serves the portal and the interface on one port
 ```
-Sign in as your ADMIN_EMAIL, or as `thandi@sunrise-demo.test` (client) to see the client view. Sign-in links print in the terminal.
 
 For interface work run `npm run dev` and `npm run dev:client` together; the client dev server proxies /api to port 3000.
 
