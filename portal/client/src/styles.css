@@ -885,7 +885,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .login-card .lead { color: var(--muted); }
 
 /* ---------- Responsive ---------- */
-@media (max-width: 1279px) {
+@media (max-width: 1599px) {
   .d-welcome { grid-column: span 12; }
   .d-tiles { grid-column: span 12; }
   .d-focus, .d-up, .d-chart, .d-act { grid-column: span 6; }
@@ -985,3 +985,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 }
 .btn { white-space: nowrap; }
 .table .actions-inner { justify-content: flex-end; }
+.welcome-facts { grid-template-columns: repeat(3, minmax(0, auto)); }
+.d-welcome .welcome-text { min-width: 0; }
+.mini-cal { max-width: 20rem; }
