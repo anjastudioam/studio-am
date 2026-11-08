@@ -228,7 +228,7 @@ function RecordDrawer({ m, record, clients, defaultClient, onSaved, onClose }: {
               <FieldInput f={fd} value={f.data[fd.key]} onChange={(v) => set({ data: { ...f.data, [fd.key]: v } })} />
             </Fragment>
           ))}
-          <div className="wide row-actions">
+          <div className="wide row-actions form-save">
             <Btn type="submit" busy={save.busy}>{record ? "Save changes" : `Add ${m.singular}`}</Btn>
             {record ? <ConfirmDelete label="Delete" onConfirm={async () => { await del.run(() => api.del(`/api/admin/records/${m.key}/${record.id}`)); await onSaved(); onClose(); }} /> : null}
           </div>
