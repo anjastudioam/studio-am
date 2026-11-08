@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 
 export type FieldType = "text" | "longtext" | "url" | "date" | "select" | "number" | "rating" | "checkbox" | "tags";
-export type FieldDef = { key: string; label: string; type: FieldType; options?: string[]; required?: boolean; hint?: string; wide?: boolean };
+export type FieldDef = { key: string; label: string; type: FieldType; options?: string[]; required?: boolean; hint?: string; wide?: boolean; group?: string; max?: number };
 export type Tone = "neutral" | "info" | "warn" | "ok" | "bad";
 export type StatusDef = { key: string; label: string; tone: Tone };
 export type ModuleDef = {
@@ -23,6 +23,7 @@ export type ModuleDef = {
   actions?: { key: string; label: string }[];
   summary?: { label: string; kind: "count" | "amount" }[];
   calendar?: boolean;
+  scores?: { keys: string[]; max: number };
   empty: string;
 };
 export type RecordRow = {

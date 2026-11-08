@@ -6,7 +6,7 @@ import type { Db } from "../db";
 import { clients, posts, records, tasks } from "../db/schema";
 import { HttpError, httpsUrl, isUuid, isoDate, wrap } from "../http";
 import { requireAdmin } from "../middleware/auth";
-import { FieldDef, MODULE_BY_KEY, MODULES, ModuleDef, SCORE_KEYS } from "../modules/registry";
+import { FieldDef, MODULE_BY_KEY, MODULES, ModuleDef } from "../modules/registry";
 import { slugify } from "./admin";
 import { runRecurring } from "../jobs/recurring";
 import { addDays, todayZA } from "../util/dates";
@@ -34,7 +34,7 @@ function fieldSchema(f: FieldDef): z.ZodTypeAny {
     case "number":
       return z.number().min(0).max(1e12);
     case "rating":
-      return z.number().min(0).max(10);
+      return z.number().min(0).max(f.max ?? 10);
     case "checkbox":
       return z.boolean();
     case "tags":
@@ -76,8 +76,8 @@ type Row = typeof records.$inferSelect & { clientName: string | null; clientSlug
 
 function present(m: ModuleDef, r: Row) {
   const data = { ...(r.data as Record<string, unknown>) };
-  if (m.key === "audits") {
-    const scores = SCORE_KEYS.map((k) => data[k]).filter((v): v is number => typeof v === "number");
+  if (m.scores) {
+    const scores = m.scores.keys.map((k) => data[k]).filter((v): v is number => typeof v === "number");
     data.overall = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : null;
   }
   const overdue = !!(r.date && m.open && r.status && m.open.includes(r.status) && r.date < today());

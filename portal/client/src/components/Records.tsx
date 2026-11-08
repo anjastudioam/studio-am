@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { Fragment, FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { fmtDate, hostOf, todayIso } from "../format";
@@ -20,7 +20,7 @@ function Cell({ m, r, col }: { m: ModuleDef; r: RecordRow; col: string }): React
   if (col === "status") return <Tone m={m} status={r.status} />;
   if (col === "date") return r.date ? <span className={r.overdue ? "late" : ""}>{fmtDate(r.date)}{r.overdue ? " (late)" : ""}</span> : <span className="muted">None</span>;
   if (col === "amount") return r.amount == null ? <span className="muted">None</span> : money(r.amount);
-  if (col === "overall") return r.data.overall == null ? <span className="muted">Not scored</span> : <strong>{r.data.overall}/10</strong>;
+  if (col === "overall") return r.data.overall == null ? <span className="muted">Not scored</span> : <strong>{r.data.overall}/{m.scores?.max ?? 10}</strong>;
   const v = r.data[col];
   const f = m.fields.find((x) => x.key === col);
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return <span className="muted">None</span>;
@@ -70,7 +70,7 @@ function FieldInput({ f, value, onChange }: { f: FieldDef; value: any; onChange:
       break;
     case "number":
     case "rating":
-      input = <input type="number" inputMode="decimal" min={0} max={f.type === "rating" ? 10 : undefined} step={f.type === "rating" ? 0.5 : "any"} {...common} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
+      input = <input type="number" inputMode="decimal" min={0} max={f.type === "rating" ? f.max ?? 10 : undefined} step={f.type === "rating" ? ((f.max ?? 10) <= 5 ? 1 : 0.5) : "any"} {...common} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
       break;
     case "date":
       input = <input type="date" {...common} value={value ?? ""} onChange={(e) => onChange(e.target.value)} />;
@@ -222,8 +222,11 @@ function RecordDrawer({ m, record, clients, defaultClient, onSaved, onClose }: {
               <input type="number" inputMode="decimal" min={0} step="0.01" required={m.amountRequired} value={f.amount} onChange={(e) => set({ amount: e.target.value })} />
             </Field>
           ) : null}
-          {m.fields.map((fd) => (
-            <FieldInput key={fd.key} f={fd} value={f.data[fd.key]} onChange={(v) => set({ data: { ...f.data, [fd.key]: v } })} />
+          {m.fields.map((fd, i) => (
+            <Fragment key={fd.key}>
+              {fd.group && fd.group !== m.fields[i - 1]?.group ? <h3 className="form-group wide">{fd.group}</h3> : null}
+              <FieldInput f={fd} value={f.data[fd.key]} onChange={(v) => set({ data: { ...f.data, [fd.key]: v } })} />
+            </Fragment>
           ))}
           <div className="wide row-actions">
             <Btn type="submit" busy={save.busy}>{record ? "Save changes" : `Add ${m.singular}`}</Btn>

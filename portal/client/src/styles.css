@@ -1032,6 +1032,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .rec-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem 1rem; align-items: start; }
 .rec-form .wide { grid-column: 1 / -1; }
 .rec-form > div, .rec-form > label { min-width: 0; }
+.rec-form .form-group { grid-column: 1 / -1; margin: .7rem 0 0; padding-top: .9rem; border-top: 1px solid var(--line); font-size: .78rem; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 @media (max-width: 560px) { .rec-form { grid-template-columns: minmax(0, 1fr); } }
 .rec-actions { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .taglist { display: flex; flex-wrap: wrap; gap: .3rem; }

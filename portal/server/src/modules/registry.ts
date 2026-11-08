@@ -14,6 +14,10 @@ export type FieldDef = {
   hint?: string;
   /** Takes the full width of the form. */
   wide?: boolean;
+  /** Section heading in the form. A heading shows where this changes from the field before it. */
+  group?: string;
+  /** Highest value for a rating field. Defaults to 10. */
+  max?: number;
 };
 
 export type Tone = "neutral" | "info" | "warn" | "ok" | "bad";
@@ -44,6 +48,8 @@ export type ModuleDef = {
   summary?: SummaryTile[];
   /** Calendar feed: show this module's dated records on the agency calendar. */
   calendar?: boolean;
+  /** Rating fields that average to one overall figure, stored with the record. */
+  scores?: { keys: string[]; max: number };
   empty: string;
 };
 
@@ -52,6 +58,11 @@ const S = (key: string, label: string, tone: Tone = "neutral"): StatusDef => ({ 
 const PRIORITY = ["Low", "Normal", "High", "Urgent"];
 const SERVICES = ["Branding", "Social media", "Website", "Marketing", "Audit", "Consulting", "Other"];
 const PLATFORMS = ["Instagram", "Facebook", "TikTok", "LinkedIn", "YouTube", "Pinterest", "X", "Other"];
+
+/** Audit scores average to one overall figure, stored with the record. */
+export const SCORE_KEYS = ["scoreStrategy", "scoreConsistency", "scoreQuality", "scoreEngagement", "scoreTechnical", "scoreConversion"];
+/** The prospect research scores (1 to 5), matching the mini-audit sheet. */
+export const LEAD_SCORE_KEYS = ["scoreBrand", "scoreSocial", "scoreContent", "scoreEngagement", "scoreGoogle", "scoreWebsite", "scoreMarketing"];
 
 export const MODULES: ModuleDef[] = [
   {
@@ -234,6 +245,7 @@ export const MODULES: ModuleDef[] = [
       { key: "reportUrl", label: "Report link", type: "url" },
     ],
     columns: ["client", "auditType", "overall", "status", "date"],
+    scores: { keys: SCORE_KEYS, max: 10 },
     calendar: true,
     actions: [{ key: "recommendationsToTasks", label: "Turn recommendations into to-dos" }],
     empty: "No audits yet. Score a client's brand, social, website or marketing and turn the findings into work.",
@@ -342,28 +354,74 @@ export const MODULES: ModuleDef[] = [
     route: "/admin/leads",
     client: "optional",
     titleLabel: "Business or person",
-    statuses: [S("NEW", "New", "info"), S("CONTACTED", "Contacted", "info"), S("MEETING", "Meeting booked", "warn"), S("PROPOSAL", "Proposal sent", "warn"), S("WON", "Won", "ok"), S("LOST", "Lost", "bad")],
-    open: ["NEW", "CONTACTED", "MEETING", "PROPOSAL"],
+    statuses: [
+      S("NEW", "New", "info"),
+      S("RESEARCHED", "Researched", "info"),
+      S("CONTACTED", "Contacted", "info"),
+      S("MEETING", "Meeting booked", "warn"),
+      S("PROPOSAL", "Proposal sent", "warn"),
+      S("WON", "Won", "ok"),
+      S("LOST", "Lost", "bad"),
+    ],
+    open: ["NEW", "RESEARCHED", "CONTACTED", "MEETING", "PROPOSAL"],
     dateLabel: "Next follow-up",
     amountLabel: "Estimated value (R)",
+    scores: { keys: LEAD_SCORE_KEYS, max: 5 },
     fields: [
-      { key: "contactName", label: "Contact name", type: "text" },
-      { key: "email", label: "Email", type: "text" },
-      { key: "phone", label: "Phone", type: "text" },
-      { key: "source", label: "Where they came from", type: "select", options: ["Referral", "Instagram", "Facebook", "LinkedIn", "Website", "Event", "Walk-in", "Other"] },
-      { key: "interest", label: "Interested in", type: "select", options: SERVICES },
-      { key: "notes", label: "Notes", type: "longtext", wide: true },
+      { key: "contactName", label: "Contact name", type: "text", group: "Contact" },
+      { key: "email", label: "Email", type: "text", group: "Contact" },
+      { key: "phone", label: "Phone", type: "text", group: "Contact" },
+      { key: "source", label: "Where they came from", type: "select", options: ["Referral", "Instagram", "Facebook", "LinkedIn", "Website", "Event", "Walk-in", "Other"], group: "Contact" },
+      { key: "interest", label: "Interested in", type: "select", options: SERVICES, group: "Contact" },
+
+      { key: "businessType", label: "Type of business", type: "select", options: ["Coffee shop", "Restaurant", "Bar or lounge", "Bakery", "Takeaway", "Guesthouse or accommodation", "Other"], group: "The business" },
+      { key: "area", label: "Suburb or town", type: "text", group: "The business" },
+      { key: "website", label: "Website", type: "url", group: "The business" },
+      { key: "instagram", label: "Instagram", type: "url", group: "The business" },
+      { key: "facebook", label: "Facebook", type: "url", group: "The business" },
+      { key: "googleProfile", label: "Google profile", type: "url", group: "The business" },
+
+      { key: "researchDate", label: "Researched on", type: "date", group: "Research" },
+      { key: "researchedBy", label: "Researched", type: "select", options: ["By hand", "With Claude"], group: "Research" },
+      { key: "scoreBrand", label: "Brand (1 to 5)", type: "rating", max: 5, group: "Research", hint: "Leave a score empty if there was nothing to judge." },
+      { key: "scoreSocial", label: "Social profiles (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "scoreContent", label: "Content (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "scoreEngagement", label: "Engagement (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "scoreGoogle", label: "Google profile (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "scoreWebsite", label: "Website and menu (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "scoreMarketing", label: "Marketing (1 to 5)", type: "rating", max: 5, group: "Research" },
+      { key: "researchLinks", label: "Pages you looked at", type: "longtext", wide: true, group: "Research", hint: "Links, one per line, so every finding can be checked." },
+
+      { key: "researchSummary", label: "Summary", type: "longtext", wide: true, group: "Findings", hint: "Who they are and the single biggest opportunity." },
+      { key: "strengths", label: "Strengths", type: "longtext", wide: true, group: "Findings", hint: "Up to three, one per line." },
+      { key: "gaps", label: "Gaps", type: "longtext", wide: true, group: "Findings", hint: "Up to three, one per line, each with what it costs them." },
+      { key: "quickWins", label: "Quick wins", type: "longtext", wide: true, group: "Findings", hint: "Things they could fix within 30 days." },
+      { key: "competitors", label: "Nearby competitors", type: "longtext", wide: true, group: "Findings" },
+      { key: "notChecked", label: "Assumed or not checked", type: "longtext", wide: true, group: "Findings", hint: "Anything you could not see, such as private analytics. Keep what you saw separate from what you assumed." },
+      { key: "suggestedPackage", label: "Suggested package", type: "select", options: ["Starter", "Growth", "Full Service", "Project", "Not sure yet"], group: "Findings" },
+      { key: "openingMessage", label: "Opening message", type: "longtext", wide: true, group: "Findings", hint: "The short message you send to start the conversation." },
+
+      { key: "discoveryDate", label: "Discovery call on", type: "date", group: "Discovery call" },
+      { key: "budget", label: "Monthly budget", type: "text", group: "Discovery call", hint: "What they have set aside, if they said." },
+      { key: "approver", label: "Who approves content", type: "text", group: "Discovery call" },
+      { key: "goals", label: "What they want in the next 6 to 12 months", type: "longtext", wide: true, group: "Discovery call" },
+      { key: "triedBefore", label: "What they have tried before", type: "longtext", wide: true, group: "Discovery call" },
+      { key: "discoveryNotes", label: "Call notes", type: "longtext", wide: true, group: "Discovery call" },
+
+      { key: "lostReason", label: "Why we lost it", type: "text", group: "Notes", hint: "Only if the lead is lost. It helps the next pitch." },
+      { key: "notes", label: "Notes", type: "longtext", wide: true, group: "Notes" },
     ],
-    columns: ["contactName", "interest", "amount", "status", "date"],
+    columns: ["contactName", "businessType", "interest", "overall", "status", "date"],
     board: true,
     calendar: true,
     actions: [{ key: "convertLead", label: "Convert to client" }],
     summary: [
-      { label: "Open leads", statuses: ["NEW", "CONTACTED", "MEETING", "PROPOSAL"], kind: "count" },
-      { label: "Pipeline value", statuses: ["NEW", "CONTACTED", "MEETING", "PROPOSAL"], kind: "amount" },
+      { label: "To research", statuses: ["NEW"], kind: "count" },
+      { label: "Open leads", statuses: ["NEW", "RESEARCHED", "CONTACTED", "MEETING", "PROPOSAL"], kind: "count" },
+      { label: "Pipeline value", statuses: ["NEW", "RESEARCHED", "CONTACTED", "MEETING", "PROPOSAL"], kind: "amount" },
       { label: "Follow-ups overdue", overdue: true, kind: "count" },
     ],
-    empty: "No leads yet. Add every enquiry and the next step, so nothing goes quiet.",
+    empty: "No leads yet. Add every business you find, then research it so you know what to say.",
   },
   {
     key: "resources",
@@ -415,5 +473,3 @@ export const MODULES: ModuleDef[] = [
 
 export const MODULE_BY_KEY = new Map(MODULES.map((m) => [m.key, m]));
 
-/** Audit scores average to one overall figure, stored with the record. */
-export const SCORE_KEYS = ["scoreStrategy", "scoreConsistency", "scoreQuality", "scoreEngagement", "scoreTechnical", "scoreConversion"];

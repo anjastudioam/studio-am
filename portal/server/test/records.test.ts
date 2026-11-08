@@ -107,6 +107,31 @@ describe("module records", () => {
     await admin.post(`/api/admin/records/meetings/${m.id}/actions/actionsToTasks`).send({}).expect(409);
   });
 
+  it("stores prospect research on a lead and averages the scores out of 5", async () => {
+    const lead = (
+      await admin
+        .post("/api/admin/records/leads")
+        .send({ title: "Corner Café", data: { businessType: "Coffee shop", website: "https://example.com", scoreBrand: 2, scoreSocial: 4, scoreGoogle: 3, gaps: "Menu is a PDF", suggestedPackage: "Starter" } })
+        .expect(201)
+    ).body;
+    expect(lead.data.overall).toBe(3);
+    const upd = await admin.patch(`/api/admin/records/leads/${lead.id}`).send({ status: "RESEARCHED", data: { scoreWebsite: 5, researchedBy: "By hand" } }).expect(200);
+    expect(upd.body.status).toBe("RESEARCHED");
+    expect(upd.body.data.overall).toBe(3.5);
+    expect(upd.body.data.gaps).toBe("Menu is a PDF");
+    // A lead with no scores yet has no overall figure.
+    const bare = (await admin.post("/api/admin/records/leads").send({ title: "No research yet" }).expect(201)).body;
+    expect(bare.data.overall).toBeNull();
+    // Research scores stop at 5, links must be https, and unknown fields are refused.
+    await admin.post("/api/admin/records/leads").send({ title: "x", data: { scoreBrand: 6 } }).expect(400);
+    await admin.post("/api/admin/records/leads").send({ title: "x", data: { instagram: "http://insecure.test" } }).expect(400);
+    await admin.post("/api/admin/records/leads").send({ title: "x", data: { businessType: "Spaceship" } }).expect(400);
+    await admin.post("/api/admin/records/leads").send({ title: "x", data: { evil: 1 } }).expect(400);
+    // Audit scores still go up to 10.
+    const audit = await admin.post("/api/admin/records/audits").send({ title: "Brand audit", clientId: s.a.id, data: { auditType: "Brand", scoreStrategy: 9 } }).expect(201);
+    expect(audit.body.data.overall).toBe(9);
+  });
+
   it("converts a lead into a client", async () => {
     const lead = (await admin.post("/api/admin/records/leads").send({ title: "Fynbos Café", amount: 8000, data: { interest: "Branding" } }).expect(201)).body;
     const res = await admin.post(`/api/admin/records/leads/${lead.id}/actions/convertLead`).send({}).expect(200);
